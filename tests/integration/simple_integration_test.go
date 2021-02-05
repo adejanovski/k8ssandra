@@ -41,8 +41,11 @@ var _ = Describe("Install the cluster", func() {
 	})
 
 	BeforeEach(func() {
+		medusaSecretPath, err := filepath.Abs("../medusa_secret.yaml")
+		Expect(err).To(BeNil())
 		kubectlOptions := k8s.NewKubectlOptions("", "", "default")
 		k8s.CreateNamespace(GinkgoT(), kubectlOptions, "k8ssandra")
+		k8s.KubectlApply(GinkgoT(), kubectlOptions, medusaSecretPath)
 	})
 
 	AfterEach(func() {
@@ -62,6 +65,9 @@ var _ = Describe("Install the cluster", func() {
 			clusterChartPath, err := filepath.Abs("../../charts/k8ssandra")
 			Expect(err).To(BeNil())
 
+			customChartPath, err := filepath.Abs("../charts/three_nodes_cluster_with_reaper_medusa.yaml")
+			Expect(err).To(BeNil())
+
 			//kubectlOptions := k8s.NewKubectlOptions("", "", "default")
 			//k8s.CreateNamespace(GinkgoT(), kubectlOptions, namespace)
 			kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
@@ -75,6 +81,7 @@ var _ = Describe("Install the cluster", func() {
 					"reaper.ingress.host":                        "repair.localhost",
 				},
 				KubectlOptions: k8s.NewKubectlOptions("", "", namespace),
+				ValuesFiles:    []string{customChartPath},
 			}
 
 			releaseName = fmt.Sprintf(
@@ -84,13 +91,13 @@ var _ = Describe("Install the cluster", func() {
 			// k8s module has no select by label
 			// We could also use kubectl wait --for=condition=Ready pod -l name=cass-operator
 			clientset, err := k8s.GetKubernetesClientFromOptionsE(GinkgoT(), kubectlOptions)
-			pods, _ := clientset.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: "name=cass-operator"})
+			pods, _ := clientset.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: "app.kubernetes.io/name=cass-operator"})
 
 			Expect(len(pods.Items)).To(Equal(1))
 			k8s.WaitUntilPodAvailable(GinkgoT(), kubectlOptions, pods.Items[0].Name, 50, 500*time.Millisecond)
 
 			// Wait for CassandraDatacenter to be ready..
-			k8s.RunKubectl(GinkgoT(), kubectlOptions, "wait", "--for=condition=Ready", "cassandradatacenter/dc1", "--timeout=300s")
+			k8s.RunKubectl(GinkgoT(), kubectlOptions, "wait", "--for=condition=Ready", "cassandradatacenter/dc1", "--timeout=900s")
 
 			// Verify all the correct services are there
 			// Grafana
@@ -114,14 +121,14 @@ var _ = Describe("Install the cluster", func() {
 
 			// Verify traefik is ready
 			kubectlOptions = k8s.NewKubectlOptions("", "", "traefik")
-			k8s.RunKubectl(GinkgoT(), kubectlOptions, "wait", "--for=condition=Ready", "pod", "-l", "app.kubernetes.io/name=traefik", "--timeout=300s")
+			k8s.RunKubectl(GinkgoT(), kubectlOptions, "wait", "--for=condition=Ready", "pod", "-l", "app.kubernetes.io/name=traefik", "--timeout=900s")
 			kubectlOptions = k8s.NewKubectlOptions("", "", namespace)
 
 			// TODO Verify with cqlsh that Cassandra is working properly
 
 			// Verify that prometheus is polling the Cassandra instance correctly
 			// Wait for the Prometheus to be ready
-			k8s.RunKubectl(GinkgoT(), kubectlOptions, "wait", "--for=condition=Ready", "pod", "-l", "app=prometheus", "--timeout=300s")
+			k8s.RunKubectl(GinkgoT(), kubectlOptions, "wait", "--for=condition=Ready", "pod", "-l", "app=prometheus", "--timeout=900s")
 
 			// Poll Prometheus targets and check that it contains our cluster
 			res, err := http.Get("http://prometheus.localhost:8080/api/v1/targets")
