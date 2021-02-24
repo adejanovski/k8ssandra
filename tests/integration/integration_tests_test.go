@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -19,7 +20,6 @@ import (
 	resty "github.com/go-resty/resty/v2"
 	"github.com/gruntwork-io/terratest/modules/helm"
 	"github.com/gruntwork-io/terratest/modules/k8s"
-	"github.com/gruntwork-io/terratest/modules/random"
 	. "github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
@@ -161,6 +161,26 @@ func iCanDeleteTheKindCluster() error {
 }
 
 func iDeployAClusterWithOptionsInTheNamespaceUsingTheValues(options, customValues string) error {
+	helmValues := map[string]string{}
+	if options == "default" {
+		helmValues = map[string]string{
+			"reaper.ingress.host": "repair.localhost",
+		}
+	}
+	return deployCluster(customValues, helmValues)
+}
+
+func iDeployAClusterWithCassandraHeapAndMBStargateHeapInTheNamespaceUsingTheValues(cassandraHeap, stargateHeap, customValues string) error {
+	newGenSize, _ := strconv.Atoi(strings.ReplaceAll(strings.ReplaceAll(cassandraHeap, "M", ""), "G", ""))
+	helmValues := map[string]string{
+		"cassandra.heap.size":       cassandraHeap,
+		"cassandra.heap.newGenSize": strconv.Itoa(newGenSize/2) + "M",
+		"stargate.heapMB":           strings.ReplaceAll(stargateHeap, "M", ""),
+	}
+	return deployCluster(customValues, helmValues)
+}
+
+func deployCluster(customValues string, helmValues map[string]string) error {
 	clusterChartPath, err := filepath.Abs("../../charts/k8ssandra")
 	err = assertActual(assert.Nil, err, "Couldn't find the absolute path for K8ssandra charts")
 	if err != nil {
@@ -176,27 +196,15 @@ func iDeployAClusterWithOptionsInTheNamespaceUsingTheValues(options, customValue
 
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
 	helmOptions := &helm.Options{}
-	if options == "default" {
-		helmOptions = &helm.Options{
-			// Enable traefik to allow redirections for testing
-			SetValues: map[string]string{
-				"ingress.traefik.enabled":                    "true",
-				"ingress.traefik.monitoring.grafana.host":    "grafana.localhost",
-				"ingress.traefik.monitoring.prometheus.host": "prometheus.localhost",
-				"ingress.traefik.repair.host":                "repair.localhost",
-			},
-			KubectlOptions: k8s.NewKubectlOptions("", "", namespace),
-			ValuesFiles:    []string{customChartPath},
-		}
-	} else {
-		helmOptions = &helm.Options{
-			KubectlOptions: k8s.NewKubectlOptions("", "", namespace),
-			ValuesFiles:    []string{customChartPath},
-		}
+
+	helmOptions = &helm.Options{
+		// Enable traefik to allow redirections for testing
+		SetValues:      helmValues,
+		KubectlOptions: k8s.NewKubectlOptions("", "", namespace),
+		ValuesFiles:    []string{customChartPath},
 	}
 
-	releaseName := fmt.Sprintf(
-		"demo-%s", strings.ToLower(random.UniqueId()))
+	releaseName := "k8ssandra"
 	helm.Install(GinkgoT(), helmOptions, clusterChartPath, releaseName)
 
 	// Wait for cass-operator pod to be ready
@@ -537,28 +545,64 @@ func iWaitForAtLeastOneSegmentToBeProcessed() error {
 	return errors.New("No repair segment was fully processed within timeout")
 }
 
+func getStargateService() (v1.Service, error) {
+	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
+	clientset, err := k8s.GetKubernetesClientFromOptionsE(GinkgoT(), kubectlOptions)
+	err = assertActual(assert.Nil, err, "Couldn't get k8s client")
+	if err != nil {
+		return v1.Service{}, err
+	}
+	services, err := clientset.CoreV1().Services(namespace).List(context.Background(), metav1.ListOptions{})
+	for _, service := range services.Items {
+		if strings.HasSuffix(service.ObjectMeta.Name, "-stargate-service") {
+			return service, nil
+		}
+	}
+	return v1.Service{}, fmt.Errorf("Couldn't find the Stargate service")
+}
+
+func iCanRunACyclesStressTestWithReadsAndAOpssRate(stressCycles, readRatio string, rate int) error {
+	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
+	cqlCredentials := getUsernamePassword("k8ssandra-superuser")
+	stargateService, err := getStargateService()
+	if err != nil {
+		return err
+	}
+	log.Println(fmt.Sprintf("Stargate service: %s", stargateService.ObjectMeta.Name))
+	k8s.RunKubectl(GinkgoT(), kubectlOptions, "run", "--image=nosqlbench/nosqlbench nosqlbench", "--", "cql-iot", "rampup-cycles=1000", "cyclerate=500", "username="+cqlCredentials.username, "password="+cqlCredentials.password, "main-cycles=10k", "hosts="+stargateService.ObjectMeta.Name, "--progress", "console:1s")
+
+	return nil
+}
+
+func iWaitForTheStargatePodsToBeReady() error {
+	return nil
+}
+
 func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Step(`^a kind cluster with "([^"]*)" is running and reachable$`, aKindClusterIsRunningAndReachable)
-	ctx.Step(`^I deploy a cluster with "([^"]*)" options in the namespace using the "([^"]*)" values$`, iDeployAClusterWithOptionsInTheNamespaceUsingTheValues)
+	ctx.Step(`^I deploy a cluster with "([^"]*)" options using the "([^"]*)" values$`, iDeployAClusterWithOptionsInTheNamespaceUsingTheValues)
 	ctx.Step(`^I can see the namespace in the list of namespaces$`, iCanSeeTheNamespaceInTheListOfNamespaces)
 	ctx.Step(`^I can see the "([^"]*)" secret in the list of secrets of the namespace$`, iCanSeeTheSecretInTheListOfSecretsInTheNamespace)
 	ctx.Step(`^I cannot see the namespace in the list of namespaces$`, iCannotSeeTheNamespaceInTheListOfNamespaces)
-	ctx.Step(`^I create the Medusa secret in the namespace applying the "([^"]*)" file$`, iCreateTheMedusaSecretInTheNamespaceApplyingTheFile)
+	ctx.Step(`^I create the Medusa secret applying the "([^"]*)" file$`, iCreateTheMedusaSecretInTheNamespaceApplyingTheFile)
 	ctx.Step(`^I create a namespace that will be used throughout the scenario$`, iCreateTheNamespace)
 	ctx.Step(`^I delete the namespace$`, iDeleteTheNamespace)
 	ctx.Step(`^I install Traefik$`, iInstallTraefik)
 	ctx.Step(`^I can delete the kind cluster$`, iCanDeleteTheKindCluster)
-	ctx.Step(`^I can check that resource of type "([^"]*)" with label "([^"]*)" is present in the namespace$`, iCanCheckThatResourceOfTypeWithLabelIsPresentInNamespace)
-	ctx.Step(`^I can check that resource of type "([^"]*)" with name "([^"]*)" is present in the namespace$`, iCanCheckThatResourceOfTypeWithNameIsPresentInNamespace)
-	ctx.Step(`^I can check that a cluster named "([^"]*)" was registered in Reaper in the namespace$`, iCanCheckThatAClusterNamedWasRegisteredInReaperInNamespace)
-	ctx.Step(`^I can see that the "([^"]*)" keyspace exists in Cassandra in the namespace$`, iCanSeeThatTheKeyspaceExistsInCassandraInNamespace)
-	ctx.Step(`^I wait for the Reaper pod to be ready in the namespace$`, iWaitForTheReaperPodToBeReadyInNamespace)
-	ctx.Step(`^I can read (\d+) rows in the "([^"]*)" table in the "([^"]*)" keyspace in the namespace$`, iCanReadRowsInTheTableInTheKeyspace)
-	ctx.Step(`^I create the "([^"]*)" table in the "([^"]*)" keyspace in the namespace$`, iCreateTheTableInTheKeyspace)
-	ctx.Step(`^I load (\d+) rows in the "([^"]*)" table in the "([^"]*)" keyspace in the namespace$`, iLoadRowsInTheTableInTheKeyspace)
-	ctx.Step(`^I perform a backup with Medusa named "([^"]*)" in the namespace$`, iPerformABackupWithMedusaNamed)
-	ctx.Step(`^I restore the backup named "([^"]*)" using Medusa in the namespace$`, iRestoreTheBackupNamedUsingMedusa)
+	ctx.Step(`^I can check that resource of type "([^"]*)" with label "([^"]*)" is present$`, iCanCheckThatResourceOfTypeWithLabelIsPresentInNamespace)
+	ctx.Step(`^I can check that resource of type "([^"]*)" with name "([^"]*)" is present$`, iCanCheckThatResourceOfTypeWithNameIsPresentInNamespace)
+	ctx.Step(`^I can check that a cluster named "([^"]*)" was registered in Reaper$`, iCanCheckThatAClusterNamedWasRegisteredInReaperInNamespace)
+	ctx.Step(`^I can see that the "([^"]*)" keyspace exists in Cassandra$`, iCanSeeThatTheKeyspaceExistsInCassandraInNamespace)
+	ctx.Step(`^I wait for the Reaper pod to be ready$`, iWaitForTheReaperPodToBeReadyInNamespace)
+	ctx.Step(`^I can read (\d+) rows in the "([^"]*)" table in the "([^"]*)" keyspace$`, iCanReadRowsInTheTableInTheKeyspace)
+	ctx.Step(`^I create the "([^"]*)" table in the "([^"]*)" keyspace$`, iCreateTheTableInTheKeyspace)
+	ctx.Step(`^I load (\d+) rows in the "([^"]*)" table in the "([^"]*)" keyspace$`, iLoadRowsInTheTableInTheKeyspace)
+	ctx.Step(`^I perform a backup with Medusa named "([^"]*)"$`, iPerformABackupWithMedusaNamed)
+	ctx.Step(`^I restore the backup named "([^"]*)" using Medusa$`, iRestoreTheBackupNamedUsingMedusa)
 	ctx.Step(`^I can cancel the running repair$`, iCanCancelTheRunningRepair)
 	ctx.Step(`^I trigger a repair on the "([^"]*)" keyspace$`, iTriggerARepairOnTheKeyspace)
 	ctx.Step(`^I wait for at least one segment to be processed$`, iWaitForAtLeastOneSegmentToBeProcessed)
+	ctx.Step(`^I can run a "([^"]*)" cycles stress test with "([^"]*)" reads and a (\d+) ops\/s rate$`, iCanRunACyclesStressTestWithReadsAndAOpssRate)
+	ctx.Step(`^I deploy a cluster with "([^"]*)" Cassandra heap and "([^"]*)" Stargate heap "in the namespace using the "([^"]*)" values$`, iDeployAClusterWithCassandraHeapAndMBStargateHeapInTheNamespaceUsingTheValues)
+	ctx.Step(`^I wait for the Stargate pods to be ready$`, iWaitForTheStargatePodsToBeReady)
 }
