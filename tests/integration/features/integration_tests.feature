@@ -49,16 +49,66 @@ Feature: Test K8ssandra deployments
     Then I cannot see the namespace in the list of namespaces
     And I can delete the kind cluster
 
-  @Stress
-  Scenario: Perform a stress test with k8ssandra
+  @Stress @Stress1
+  Scenario: Perform a stress test with k8ssandra using 500M/300M heaps
     Given a kind cluster with "three workers" is running and reachable
     When I install Traefik
     And I create a namespace that will be used throughout the scenario
     Then I can see the namespace in the list of namespaces
-    When I deploy a cluster with "500M" Cassandra heap and "300M" Stargate heap "in the namespace using the "three_nodes_cluster_with_stargate.yaml" values
-    Then I can check that resource of type "service" with label "app.kubernetes.io/managed-by=reaper-operator" is present
-    When I wait for the Stargate pods to be ready
-    And I can run a "10k" cycles stress test with "30%" reads and a 500 ops/s rate
-    #When I delete the namespace
-    #Then I cannot see the namespace in the list of namespaces
-    #And I can delete the kind cluster
+    When I deploy a cluster with "500M" Cassandra heap and "300M" Stargate heap using the "three_nodes_cluster_with_stargate.yaml" values
+    And I wait for the Stargate pods to be ready
+    Then I can run a "100k" cycles stress test with "30%" reads and a 500 ops/s rate within 300 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1000 ops/s rate within 300 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1500 ops/s rate within 300 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 2000 ops/s rate within 300 seconds
+    When I delete the namespace
+    Then I cannot see the namespace in the list of namespaces
+    And I can delete the kind cluster
+  
+  @Stress @Stress2
+  Scenario: Perform a stress test with k8ssandra using 1024M/300M heaps
+    Given a kind cluster with "three workers" is running and reachable
+    When I install Traefik
+    And I create a namespace that will be used throughout the scenario
+    Then I can see the namespace in the list of namespaces
+    When I deploy a cluster with "1024M" Cassandra heap and "300M" Stargate heap using the "three_nodes_cluster_with_stargate.yaml" values
+    And I wait for the Stargate pods to be ready
+    Then I can run a "100k" cycles stress test with "30%" reads and a 500 ops/s rate within 300 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1000 ops/s rate within 300 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1500 ops/s rate within 300 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 2000 ops/s rate within 300 seconds
+    When I delete the namespace
+    Then I cannot see the namespace in the list of namespaces
+    And I can delete the kind cluster
+  
+  @Stress @Stress3
+  Scenario: Perform a stress test with k8ssandra using 500M/500M heaps
+    Given a kind cluster with "three workers" is running and reachable
+    When I install Traefik
+    And I create a namespace that will be used throughout the scenario
+    Then I can see the namespace in the list of namespaces
+    When I deploy a cluster with "500M" Cassandra heap and "500M" Stargate heap using the "three_nodes_cluster_with_stargate.yaml" values
+    And I wait for the Stargate pods to be ready
+    Then I can run a "100k" cycles stress test with "30%" reads and a 500 ops/s rate within 300 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1000 ops/s rate within 300 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1500 ops/s rate within 300 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 2000 ops/s rate within 300 seconds
+    When I delete the namespace
+    Then I cannot see the namespace in the list of namespaces
+    And I can delete the kind cluster
+  
+  @Stress @Stress4
+  Scenario: Perform a stress test with k8ssandra using 1024M/500M heaps
+    Given a kind cluster with "three workers" is running and reachable
+    When I install Traefik
+    And I create a namespace that will be used throughout the scenario
+    Then I can see the namespace in the list of namespaces
+    When I deploy a cluster with "1024M" Cassandra heap and "500M" Stargate heap using the "three_nodes_cluster_with_stargate.yaml" values
+    And I wait for the Stargate pods to be ready
+    Then I can run a "100k" cycles stress test with "30%" reads and a 500 ops/s rate within 300 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1000 ops/s rate within 300 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1500 ops/s rate within 300 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 2000 ops/s rate within 300 seconds
+    When I delete the namespace
+    Then I cannot see the namespace in the list of namespaces
+    And I can delete the kind cluster

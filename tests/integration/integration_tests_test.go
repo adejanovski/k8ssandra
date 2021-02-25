@@ -1,6 +1,7 @@
 package integration
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -20,6 +21,7 @@ import (
 	resty "github.com/go-resty/resty/v2"
 	"github.com/gruntwork-io/terratest/modules/helm"
 	"github.com/gruntwork-io/terratest/modules/k8s"
+	"github.com/gruntwork-io/terratest/modules/random"
 	. "github.com/onsi/ginkgo"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
@@ -66,18 +68,14 @@ func runShellCommand(command *exec.Cmd) error {
 }
 
 func runShellCommandAndGetOutput(command *exec.Cmd) string {
-	err := command.Start()
-	if err != nil {
-		log.Fatal(err)
-	}
-	err = command.Wait()
+	var outb bytes.Buffer
+	command.Stdout = &outb
+	err := command.Run()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	output, _ := command.CombinedOutput()
-
-	return string(output)
+	return string(outb.String())
 }
 
 func assertActual(a actualAssertion, actual interface{}, msgAndArgs ...interface{}) error {
@@ -170,7 +168,7 @@ func iDeployAClusterWithOptionsInTheNamespaceUsingTheValues(options, customValue
 	return deployCluster(customValues, helmValues)
 }
 
-func iDeployAClusterWithCassandraHeapAndMBStargateHeapInTheNamespaceUsingTheValues(cassandraHeap, stargateHeap, customValues string) error {
+func iDeployAClusterWithCassandraHeapAndMBStargateHeapUsingTheValues(cassandraHeap, stargateHeap, customValues string) error {
 	newGenSize, _ := strconv.Atoi(strings.ReplaceAll(strings.ReplaceAll(cassandraHeap, "M", ""), "G", ""))
 	helmValues := map[string]string{
 		"cassandra.heap.size":       cassandraHeap,
@@ -302,8 +300,8 @@ type credentials struct {
 	password string
 }
 
-func getUsernamePassword(secretName string) credentials {
-	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
+func getUsernamePassword(secretName, ns string) credentials {
+	kubectlOptions := k8s.NewKubectlOptions("", "", ns)
 	secret := k8s.GetSecret(GinkgoT(), kubectlOptions, secretName)
 	username := secret.Data["username"]
 	password := secret.Data["password"]
@@ -312,7 +310,7 @@ func getUsernamePassword(secretName string) credentials {
 }
 
 func runCassandraQueryAndGetOutput(query string) string {
-	cqlCredentials := getUsernamePassword("k8ssandra-superuser")
+	cqlCredentials := getUsernamePassword("k8ssandra-superuser", namespace)
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
 	// Get reaper service
 	output, _ := k8s.RunKubectlAndGetOutputE(GinkgoT(), kubectlOptions, "exec", "-it", "k8ssandra-dc1-default-sts-0", "--", "/opt/cassandra/bin/cqlsh", "--username", cqlCredentials.username, "--password", cqlCredentials.password, "-e", query)
@@ -561,21 +559,78 @@ func getStargateService() (v1.Service, error) {
 	return v1.Service{}, fmt.Errorf("Couldn't find the Stargate service")
 }
 
-func iCanRunACyclesStressTestWithReadsAndAOpssRate(stressCycles, readRatio string, rate int) error {
+func iCanRunACyclesStressTestWithReadsAndAOpssRateWithinTimeout(stressCycles, percentRead string, rate, timeout int) error {
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
-	cqlCredentials := getUsernamePassword("k8ssandra-superuser")
-	stargateService, err := getStargateService()
-	if err != nil {
-		return err
-	}
-	log.Println(fmt.Sprintf("Stargate service: %s", stargateService.ObjectMeta.Name))
-	k8s.RunKubectl(GinkgoT(), kubectlOptions, "run", "--image=nosqlbench/nosqlbench nosqlbench", "--", "cql-iot", "rampup-cycles=1000", "cyclerate=500", "username="+cqlCredentials.username, "password="+cqlCredentials.password, "main-cycles=10k", "hosts="+stargateService.ObjectMeta.Name, "--progress", "console:1s")
+	cqlCredentials := getUsernamePassword("k8ssandra-superuser", namespace)
+	parsedReadRatio, _ := strconv.Atoi(strings.ReplaceAll(percentRead, "%", ""))
+	readRatio := parsedReadRatio / 10
+	writeRatio := 10 - readRatio
+
+	jobName := fmt.Sprintf("nosqlbench-%s", strings.ToLower(random.UniqueId()))
+	k8s.RunKubectl(GinkgoT(), kubectlOptions, "create", "job", "--image=nosqlbench/nosqlbench", jobName,
+		"--", "java", "-jar", "nb.jar", "cql-iot", "rampup-cycles=1", fmt.Sprintf("cyclerate=%d", rate),
+		fmt.Sprintf("username=%s", cqlCredentials.username), fmt.Sprintf("password=%s", cqlCredentials.password),
+		fmt.Sprintf("main-cycles=%s", stressCycles), "hosts=k8ssandra-dc1-stargate-service", "--progress", "console:1s", "-v",
+		fmt.Sprintf("write_ratio=%d", writeRatio), fmt.Sprintf("read_ratio=%d", readRatio))
+
+	defer timeTrack(time.Now(), "nosqlbench stress test")
+	k8s.RunKubectl(GinkgoT(), kubectlOptions, "wait", "--for=condition=complete", fmt.Sprintf("--timeout=%ds", timeout), fmt.Sprintf("job/%s", jobName))
+
+	output := runShellCommandAndGetOutput(
+		exec.Command("bash", "-c", fmt.Sprintf("kubectl logs job/%s -n %s | grep cqliot_default_main.cycles.servicetime", jobName, namespace)))
+	log.Println(Outline(output))
 
 	return nil
 }
 
 func iWaitForTheStargatePodsToBeReady() error {
-	return nil
+	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
+
+	attempts := 0
+	for {
+		attempts++
+		output, err := k8s.RunKubectlAndGetOutputE(GinkgoT(), kubectlOptions, "rollout", "status", "deployment", "k8ssandra-dc1-stargate")
+		if err == nil {
+			if strings.HasSuffix(output, "successfully rolled out") {
+				return nil
+			}
+		}
+		time.Sleep(30 * time.Second)
+		if attempts >= 10 {
+			// Too many attempts, failed test.
+			break
+		}
+	}
+	return fmt.Errorf("Stargate deployment didn't roll out within timeout")
+}
+
+var (
+	Info    = Yellow
+	Outline = Purple
+)
+
+var (
+	Black   = Color("\033[1;30m%s\033[0m")
+	Red     = Color("\033[1;31m%s\033[0m")
+	Green   = Color("\033[1;32m%s\033[0m")
+	Yellow  = Color("\033[1;33m%s\033[0m")
+	Purple  = Color("\033[1;34m%s\033[0m")
+	Magenta = Color("\033[1;35m%s\033[0m")
+	Teal    = Color("\033[1;36m%s\033[0m")
+	White   = Color("\033[1;37m%s\033[0m")
+)
+
+func Color(colorString string) func(...interface{}) string {
+	sprint := func(args ...interface{}) string {
+		return fmt.Sprintf(colorString,
+			fmt.Sprint(args...))
+	}
+	return sprint
+}
+
+func timeTrack(start time.Time, name string) {
+	elapsed := time.Since(start)
+	log.Println(Info(fmt.Sprintf("%s took %s", name, elapsed)))
 }
 
 func InitializeScenario(ctx *godog.ScenarioContext) {
@@ -602,7 +657,7 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I can cancel the running repair$`, iCanCancelTheRunningRepair)
 	ctx.Step(`^I trigger a repair on the "([^"]*)" keyspace$`, iTriggerARepairOnTheKeyspace)
 	ctx.Step(`^I wait for at least one segment to be processed$`, iWaitForAtLeastOneSegmentToBeProcessed)
-	ctx.Step(`^I can run a "([^"]*)" cycles stress test with "([^"]*)" reads and a (\d+) ops\/s rate$`, iCanRunACyclesStressTestWithReadsAndAOpssRate)
-	ctx.Step(`^I deploy a cluster with "([^"]*)" Cassandra heap and "([^"]*)" Stargate heap "in the namespace using the "([^"]*)" values$`, iDeployAClusterWithCassandraHeapAndMBStargateHeapInTheNamespaceUsingTheValues)
+	ctx.Step(`^I can run a "([^"]*)" cycles stress test with "([^"]*)" reads and a (\d+) ops\/s rate within (\d+) seconds$`, iCanRunACyclesStressTestWithReadsAndAOpssRateWithinTimeout)
+	ctx.Step(`^I deploy a cluster with "([^"]*)" Cassandra heap and "([^"]*)" Stargate heap using the "([^"]*)" values$`, iDeployAClusterWithCassandraHeapAndMBStargateHeapUsingTheValues)
 	ctx.Step(`^I wait for the Stargate pods to be ready$`, iWaitForTheStargatePodsToBeReady)
 }
