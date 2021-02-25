@@ -573,7 +573,7 @@ func iCanRunACyclesStressTestWithReadsAndAOpssRateWithinTimeout(stressCycles, pe
 		fmt.Sprintf("main-cycles=%s", stressCycles), "hosts=k8ssandra-dc1-stargate-service", "--progress", "console:1s", "-v",
 		fmt.Sprintf("write_ratio=%d", writeRatio), fmt.Sprintf("read_ratio=%d", readRatio))
 
-	defer timeTrack(time.Now(), "nosqlbench stress test")
+	defer timeTrack(time.Now(), fmt.Sprintf("nosqlbench stress test with %d ops/s", rate))
 	k8s.RunKubectl(GinkgoT(), kubectlOptions, "wait", "--for=condition=complete", fmt.Sprintf("--timeout=%ds", timeout), fmt.Sprintf("job/%s", jobName))
 
 	output := runShellCommandAndGetOutput(

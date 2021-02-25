@@ -57,10 +57,10 @@ Feature: Test K8ssandra deployments
     Then I can see the namespace in the list of namespaces
     When I deploy a cluster with "500M" Cassandra heap and "300M" Stargate heap using the "three_nodes_cluster_with_stargate.yaml" values
     And I wait for the Stargate pods to be ready
-    Then I can run a "100k" cycles stress test with "30%" reads and a 500 ops/s rate within 300 seconds
-    And I can run a "100k" cycles stress test with "30%" reads and a 1000 ops/s rate within 300 seconds
-    And I can run a "100k" cycles stress test with "30%" reads and a 1500 ops/s rate within 300 seconds
-    And I can run a "100k" cycles stress test with "30%" reads and a 2000 ops/s rate within 300 seconds
+    Then I can run a "100k" cycles stress test with "30%" reads and a 500 ops/s rate within 900 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1000 ops/s rate within 900 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1500 ops/s rate within 900 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 2000 ops/s rate within 900 seconds
     When I delete the namespace
     Then I cannot see the namespace in the list of namespaces
     And I can delete the kind cluster
@@ -73,10 +73,10 @@ Feature: Test K8ssandra deployments
     Then I can see the namespace in the list of namespaces
     When I deploy a cluster with "1024M" Cassandra heap and "300M" Stargate heap using the "three_nodes_cluster_with_stargate.yaml" values
     And I wait for the Stargate pods to be ready
-    Then I can run a "100k" cycles stress test with "30%" reads and a 500 ops/s rate within 300 seconds
-    And I can run a "100k" cycles stress test with "30%" reads and a 1000 ops/s rate within 300 seconds
-    And I can run a "100k" cycles stress test with "30%" reads and a 1500 ops/s rate within 300 seconds
-    And I can run a "100k" cycles stress test with "30%" reads and a 2000 ops/s rate within 300 seconds
+    Then I can run a "100k" cycles stress test with "30%" reads and a 500 ops/s rate within 900 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1000 ops/s rate within 900 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1500 ops/s rate within 900 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 2000 ops/s rate within 900 seconds
     When I delete the namespace
     Then I cannot see the namespace in the list of namespaces
     And I can delete the kind cluster
@@ -89,10 +89,10 @@ Feature: Test K8ssandra deployments
     Then I can see the namespace in the list of namespaces
     When I deploy a cluster with "500M" Cassandra heap and "500M" Stargate heap using the "three_nodes_cluster_with_stargate.yaml" values
     And I wait for the Stargate pods to be ready
-    Then I can run a "100k" cycles stress test with "30%" reads and a 500 ops/s rate within 300 seconds
-    And I can run a "100k" cycles stress test with "30%" reads and a 1000 ops/s rate within 300 seconds
-    And I can run a "100k" cycles stress test with "30%" reads and a 1500 ops/s rate within 300 seconds
-    And I can run a "100k" cycles stress test with "30%" reads and a 2000 ops/s rate within 300 seconds
+    Then I can run a "100k" cycles stress test with "30%" reads and a 500 ops/s rate within 900 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1000 ops/s rate within 900 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1500 ops/s rate within 900 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 2000 ops/s rate within 900 seconds
     When I delete the namespace
     Then I cannot see the namespace in the list of namespaces
     And I can delete the kind cluster
@@ -105,10 +105,10 @@ Feature: Test K8ssandra deployments
     Then I can see the namespace in the list of namespaces
     When I deploy a cluster with "1024M" Cassandra heap and "500M" Stargate heap using the "three_nodes_cluster_with_stargate.yaml" values
     And I wait for the Stargate pods to be ready
-    Then I can run a "100k" cycles stress test with "30%" reads and a 500 ops/s rate within 300 seconds
-    And I can run a "100k" cycles stress test with "30%" reads and a 1000 ops/s rate within 300 seconds
-    And I can run a "100k" cycles stress test with "30%" reads and a 1500 ops/s rate within 300 seconds
-    And I can run a "100k" cycles stress test with "30%" reads and a 2000 ops/s rate within 300 seconds
+    Then I can run a "100k" cycles stress test with "30%" reads and a 500 ops/s rate within 900 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1000 ops/s rate within 900 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 1500 ops/s rate within 900 seconds
+    And I can run a "100k" cycles stress test with "30%" reads and a 2000 ops/s rate within 900 seconds
     When I delete the namespace
     Then I cannot see the namespace in the list of namespaces
     And I can delete the kind cluster
