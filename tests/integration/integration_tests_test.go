@@ -165,15 +165,54 @@ func iDeployAClusterWithOptionsInTheNamespaceUsingTheValues(options, customValue
 			"reaper.ingress.host": "repair.localhost",
 		}
 	}
+	if options == "minio" {
+		serviceName, err := getMinioServiceName()
+		if err != nil {
+			return fmt.Errorf("Failed getting Minio service name")
+		}
+		helmValues = map[string]string{
+			"medusa.storage_properties.host": fmt.Sprintf("%s.minio.svc.cluster.local", strings.ReplaceAll(serviceName, "'", "")),
+		}
+	}
 	return deployCluster(customValues, helmValues)
 }
 
-func iDeployAClusterWithCassandraHeapAndMBStargateHeapUsingTheValues(cassandraHeap, stargateHeap, customValues string) error {
+func Find(slice []string, val string) bool {
+	for _, item := range slice {
+		if item == val {
+			return true
+		}
+	}
+	return false
+}
+
+func iDeployAClusterWithCassandraHeapAndMBStargateHeapUsingTheValues(options, cassandraHeap, stargateHeap, customValues string) error {
+	splitOptions := strings.Split(options, "-")
+	medusaEnabled := "true"
+	reaperEnabled := "true"
+	monitoringEnabled := "true"
+
+	if Find(splitOptions, "nomedusa") {
+		medusaEnabled = "false"
+	}
+
+	if Find(splitOptions, "noreaper") {
+		reaperEnabled = "false"
+	}
+
+	if Find(splitOptions, "nomonitoring") {
+		monitoringEnabled = "false"
+	}
+
 	newGenSize, _ := strconv.Atoi(strings.ReplaceAll(strings.ReplaceAll(cassandraHeap, "M", ""), "G", ""))
 	helmValues := map[string]string{
-		"cassandra.heap.size":       cassandraHeap,
-		"cassandra.heap.newGenSize": strconv.Itoa(newGenSize/2) + "M",
-		"stargate.heapMB":           strings.ReplaceAll(stargateHeap, "M", ""),
+		"cassandra.heap.size":           cassandraHeap,
+		"cassandra.heap.newGenSize":     strconv.Itoa(newGenSize/2) + "M",
+		"stargate.heapMB":               strings.ReplaceAll(stargateHeap, "M", ""),
+		"medusa.enabled":                medusaEnabled,
+		"reaper.enabled":                reaperEnabled,
+		"reaper-operator.enabled":       reaperEnabled,
+		"kube-prometheus-stack.enabled": monitoringEnabled,
 	}
 	return deployCluster(customValues, helmValues)
 }
@@ -203,6 +242,7 @@ func deployCluster(customValues string, helmValues map[string]string) error {
 	}
 
 	releaseName := "k8ssandra"
+	defer timeTrack(time.Now(), fmt.Sprintf("Installing and starting k8ssandra"))
 	helm.Install(GinkgoT(), helmOptions, clusterChartPath, releaseName)
 
 	// Wait for cass-operator pod to be ready
@@ -568,16 +608,16 @@ func iCanRunACyclesStressTestWithReadsAndAOpssRateWithinTimeout(stressCycles, pe
 
 	jobName := fmt.Sprintf("nosqlbench-%s", strings.ToLower(random.UniqueId()))
 	k8s.RunKubectl(GinkgoT(), kubectlOptions, "create", "job", "--image=nosqlbench/nosqlbench", jobName,
-		"--", "java", "-jar", "nb.jar", "cql-iot", "rampup-cycles=1", fmt.Sprintf("cyclerate=%d", rate),
+		"--", "java", "-jar", "nb.jar", "cql-iot", "rampup-cycles=1k", fmt.Sprintf("cyclerate=%d", rate),
 		fmt.Sprintf("username=%s", cqlCredentials.username), fmt.Sprintf("password=%s", cqlCredentials.password),
 		fmt.Sprintf("main-cycles=%s", stressCycles), "hosts=k8ssandra-dc1-stargate-service", "--progress", "console:1s", "-v",
-		fmt.Sprintf("write_ratio=%d", writeRatio), fmt.Sprintf("read_ratio=%d", readRatio))
+		fmt.Sprintf("write_ratio=%d", writeRatio), fmt.Sprintf("read_ratio=%d", readRatio), "async=100")
 
 	defer timeTrack(time.Now(), fmt.Sprintf("nosqlbench stress test with %d ops/s", rate))
 	k8s.RunKubectl(GinkgoT(), kubectlOptions, "wait", "--for=condition=complete", fmt.Sprintf("--timeout=%ds", timeout), fmt.Sprintf("job/%s", jobName))
 
 	output := runShellCommandAndGetOutput(
-		exec.Command("bash", "-c", fmt.Sprintf("kubectl logs job/%s -n %s | grep cqliot_default_main.cycles.servicetime", jobName, namespace)))
+		exec.Command("bash", "-c", fmt.Sprintf("kubectl logs job/%s -n %s | grep -e cqliot_default_main.cycles.servicetime -e cqliot_default_main.cycles.responsetime", jobName, namespace)))
 	log.Println(Outline(output))
 
 	return nil
@@ -633,6 +673,36 @@ func timeTrack(start time.Time, name string) {
 	log.Println(Info(fmt.Sprintf("%s took %s", name, elapsed)))
 }
 
+// MinIO related functions
+func getMinioServiceName() (string, error) {
+	kubectlOptions := k8s.NewKubectlOptions("", "", "minio")
+	minioService, err := k8s.RunKubectlAndGetOutputE(GinkgoT(), kubectlOptions, "get", "services", "-l", "app=minio", "-o", "jsonpath='{.items[0].metadata.name}'")
+	if err != nil {
+		return "", fmt.Errorf("Failed identifying the minio service")
+	}
+	log.Println(fmt.Sprintf("Minio service: %s", minioService))
+
+	return minioService, nil
+}
+
+func iDeployMinIOUsingHelmAndCreateTheBucket(bucketName string) error {
+	helmOptions := &helm.Options{
+		KubectlOptions: k8s.NewKubectlOptions("", "", "default"),
+	}
+	_, err := helm.RunHelmCommandAndGetOutputE(GinkgoT(), helmOptions, "repo", "add", "minio", "https://helm.min.io/")
+	if err != nil {
+		return fmt.Errorf("Failed adding the minio Helm repo")
+	}
+
+	_, err = helm.RunHelmCommandAndGetOutputE(GinkgoT(), helmOptions, "install",
+		"--set", fmt.Sprintf("accessKey=minio_key,secretKey=minio_secret,defaultBucket.enabled=true,defaultBucket.name=%s", bucketName),
+		"--generate-name", "minio/minio", "-n", "minio", "--create-namespace")
+	if err != nil {
+		return fmt.Errorf("Failed installing minio using Helm")
+	}
+	return nil
+}
+
 func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Step(`^a kind cluster with "([^"]*)" is running and reachable$`, aKindClusterIsRunningAndReachable)
 	ctx.Step(`^I deploy a cluster with "([^"]*)" options using the "([^"]*)" values$`, iDeployAClusterWithOptionsInTheNamespaceUsingTheValues)
@@ -658,6 +728,7 @@ func InitializeScenario(ctx *godog.ScenarioContext) {
 	ctx.Step(`^I trigger a repair on the "([^"]*)" keyspace$`, iTriggerARepairOnTheKeyspace)
 	ctx.Step(`^I wait for at least one segment to be processed$`, iWaitForAtLeastOneSegmentToBeProcessed)
 	ctx.Step(`^I can run a "([^"]*)" cycles stress test with "([^"]*)" reads and a (\d+) ops\/s rate within (\d+) seconds$`, iCanRunACyclesStressTestWithReadsAndAOpssRateWithinTimeout)
-	ctx.Step(`^I deploy a cluster with "([^"]*)" Cassandra heap and "([^"]*)" Stargate heap using the "([^"]*)" values$`, iDeployAClusterWithCassandraHeapAndMBStargateHeapUsingTheValues)
+	ctx.Step(`^I deploy a cluster with "([^"]*)" options and "([^"]*)" Cassandra heap and "([^"]*)" Stargate heap using the "([^"]*)" values$`, iDeployAClusterWithCassandraHeapAndMBStargateHeapUsingTheValues)
 	ctx.Step(`^I wait for the Stargate pods to be ready$`, iWaitForTheStargatePodsToBeReady)
+	ctx.Step(`^I deploy MinIO using helm and create the "([^"]*)" bucket$`, iDeployMinIOUsingHelmAndCreateTheBucket)
 }

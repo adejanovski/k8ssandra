@@ -23,14 +23,13 @@ stargate:
     cassandra:
       enabled: true
 
-reaper:
-  enabled: false
-
 medusa:
-  enabled: false
 
-reaper-operator:
-  enabled: true
+  multiTenant: true
+  storage: s3
 
-kube-prometheus-stack:
-  enabled: false
+  storage_properties:
+      region: us-east-1
+
+  bucketName: k8ssandra-medusa
+  storageSecret: medusa-bucket-key

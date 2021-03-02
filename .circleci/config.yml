@@ -87,4 +87,4 @@ workflows:
       - integration-test:
           matrix:
             parameters:
-              godog-tag: ["@Reaper", "@Medusa", "@Stress1", "@Stress2", "@Stress3", "@Stress4"]
+              godog-tag: ["@Reaper", "@MedusaS3", "@MedusaMinio", "@StressLite"]
