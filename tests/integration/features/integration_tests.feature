@@ -31,7 +31,7 @@ Feature: Test K8ssandra deployments
     And I create the Medusa secret applying the "~/medusa_secret.yaml" file
     Then I can see the namespace in the list of namespaces
     And I can see the "medusa-bucket-key" secret in the list of secrets of the namespace
-    When I deploy a cluster with "no Traefik" options using the "one_node_cluster_with_medusa.yaml" values
+    When I deploy a cluster with "no Traefik" options using the "one_node_cluster_with_medusa_s3.yaml" values
     And I can check that resource of type "service" with name "k8ssandra-dc1-all-pods-service" is present
     And I can check that resource of type "service" with name "k8ssandra-dc1-service" is present
     And I can check that resource of type "service" with name "k8ssandra-seed-service" is present
