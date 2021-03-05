@@ -1,0 +1,70 @@
+---
+on:
+  push:
+
+jobs:
+  integration-tests:
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        godog-tag: ["@Reaper", "@MedusaS3", "@MedusaMinio", "@StressLite"]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Cache Docker layers
+        uses: actions/cache@v2
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-k8ssandra-buildx
+          restore-keys: |
+            ${{ runner.os }}-k8ssandra-buildx
+      - name: Install Dependencies
+        run: |
+          set -x
+          sudo apt-get update -qq
+
+          # install Go
+          wget https://dl.google.com/go/go1.15.8.linux-amd64.tar.gz
+          sudo tar -C /usr/local -xzf go1.15.8.linux-amd64.tar.gz
+          export PATH=$PATH:/usr/local/go/bin
+          go version
+
+          # install kubectl
+          curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+          sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+
+          # install kind
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.10.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo install -o root -g root -m 0755 ./kind /usr/local/bin/kind
+
+          # install Helm
+          curl https://baltocdn.com/helm/signing.asc | sudo apt-key add -
+          sudo apt-get install apt-transport-https --yes
+          echo "deb https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
+          sudo apt-get update
+          sudo apt-get install helm -y
+
+          # install jq
+          sudo apt-get install jq -y
+
+          # install godog
+          go get github.com/cucumber/godog/cmd/godog@v0.11.0
+
+      - name: Update hosts file
+        run: |
+          echo "127.0.0.1 repair.localhost" | sudo tee -a /etc/hosts
+          echo "127.0.0.1 grafana.localhost" | sudo tee -a /etc/hosts
+          echo "127.0.0.1 prometheus.localhost" | sudo tee -a /etc/hosts
+
+      - name: Write Secrets
+        run: |
+          printf "%s" '${{ secrets.MEDUSA_SECRET }}' > ~/medusa_secret.yaml
+
+      - name: Run Integration Tests
+        run: |
+          cd tests/integration
+          export GOPATH=$(go env GOPATH)
+          export PATH=$PATH:$GOPATH:$GOPATH/bin
+          godog --tags=${{ matrix.godog-tag }}

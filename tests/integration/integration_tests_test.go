@@ -444,10 +444,10 @@ func iPerformABackupWithMedusaNamed(backupName string) error {
 				return nil
 			}
 		}
-		if attempts > 12 {
+		if attempts > 10 {
 			return fmt.Errorf("Backup didn't succeed within timeout: %s", err)
 		}
-		time.Sleep(10 * time.Second)
+		time.Sleep(30 * time.Second)
 	}
 }
 
