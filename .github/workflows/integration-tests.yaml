@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        godog-tag: ["@Reaper", "@MedusaS3", "@MedusaMinio", "@StressLite"]
+        scenario: ["TestReaperDeploymentScenario", "TestMedusaMinioScenario", "TestMedusaS3Scenario"]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -49,9 +49,6 @@ jobs:
           # install jq
           sudo apt-get install jq -y
 
-          # install godog
-          go get github.com/cucumber/godog/cmd/godog@v0.11.0
-
       - name: Update hosts file
         run: |
           echo "127.0.0.1 repair.localhost" | sudo tee -a /etc/hosts
@@ -64,7 +61,5 @@ jobs:
 
       - name: Run Integration Tests
         run: |
-          cd tests/integration
-          export GOPATH=$(go env GOPATH)
-          export PATH=$PATH:$GOPATH:$GOPATH/bin
-          godog --tags=${{ matrix.godog-tag }}
+          cd tests/integration_new
+          go test -timeout 30m -run ${{ matrix.scenario }}
