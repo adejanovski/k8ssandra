@@ -4,6 +4,7 @@ go 1.15
 
 require (
 	github.com/datastax/cass-operator v1.5.1-0.20210112050706-a45fd80b40e0
+	github.com/go-resty/resty/v2 v2.5.0
 	github.com/gruntwork-io/terratest v0.30.15
 	github.com/k8ssandra/reaper-operator v0.0.0-20210122200305-0d6525659e9d
 	github.com/onsi/ginkgo v1.14.2
@@ -18,8 +19,8 @@ require (
 )
 
 replace (
-    github.com/docker/docker => github.com/docker/engine v1.4.2-0.20200204220554-5f6d6f3f2203
 	github.com/abbot/go-http-auth => github.com/containous/go-http-auth v0.4.1-0.20200324110947-a37a7636d23e
+	github.com/docker/docker => github.com/docker/engine v1.4.2-0.20200204220554-5f6d6f3f2203
 	github.com/go-check/check => github.com/containous/check v0.0.0-20170915194414-ca0bf163426a
 	k8s.io/api => k8s.io/api v0.18.6
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.18.6
