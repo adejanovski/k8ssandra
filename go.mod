@@ -4,12 +4,12 @@ go 1.15
 
 require (
 	github.com/datastax/cass-operator v1.5.1-0.20210112050706-a45fd80b40e0
-	github.com/go-resty/resty/v2 v2.5.0
+	github.com/go-resty/resty/v2 v2.1.1-0.20191201195748-d7b97669fe48
 	github.com/gruntwork-io/terratest v0.30.15
 	github.com/k8ssandra/reaper-operator v0.0.0-20210122200305-0d6525659e9d
 	github.com/onsi/ginkgo v1.14.2
 	github.com/onsi/gomega v1.10.3
-	github.com/stretchr/testify v1.6.1 // indirect
+	github.com/stretchr/testify v1.6.1
 	github.com/traefik/traefik/v2 v2.3.7
 	k8s.io/api v0.18.6
 	k8s.io/apimachinery v0.18.6

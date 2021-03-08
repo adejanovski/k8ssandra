@@ -1,4 +1,4 @@
-package integration_tests
+package integrationnew
 
 import (
 	"os"
@@ -41,10 +41,14 @@ func TestReaperDeploymentScenario(t *testing.T) {
 
 // Medusa scenario (invoked with a specific backend name):
 // - Register a cluster with 1 node
-// - Potentially install backend specific dependencies
+// - Potentially install backend specific dependencies (such as Minio)
 // - Create the backend credentials secret
-// -
-// - Wait for at least one segment to be processed
+// - Create a keyspace and a table
+// - Load 10 rows and check that we can read 10 rows
+// - Perform a backup with Medusa
+// - Load 10 rows and check that we can read 20 rows
+// - Restore the backup
+// - Verify that we can read 10 rows
 // - Cancel the repair
 // - Terminate the namespace and delete the cluster
 func MedusaDeploymentScenario(storageBackend string, t *testing.T) {

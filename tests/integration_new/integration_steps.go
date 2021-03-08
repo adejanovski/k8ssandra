@@ -1,4 +1,4 @@
-package integration_tests
+package integrationnew
 
 import (
 	"bytes"
@@ -46,52 +46,15 @@ func runShellCommandAndGetOutput(command *exec.Cmd) string {
 	return string(outb.String())
 }
 
-func assertActual(test *testing.T, a actualAssertion, actual interface{}, msgAndArgs ...interface{}) {
-	var t asserter
-	a(&t, actual, msgAndArgs...)
-	if t.err != nil {
-		test.Fatal(t.err.Error())
-	}
-}
-
-type actualAssertion func(t assert.TestingT, actual interface{}, msgAndArgs ...interface{}) bool
-
-// asserter is used to be able to retrieve the error reported by the called assertion
-type asserter struct {
-	err error
-}
-
-// assertExpectedAndActual is a helper function to allow the step function to call
-// assertion functions where you want to compare an expected and an actual value.
-func assertExpectedAndActual(test *testing.T, a expectedAndActualAssertion, expected, actual interface{}, msgAndArgs ...interface{}) {
-	var t asserter
-	a(&t, expected, actual, msgAndArgs...)
-	if t.err != nil {
-		test.Fatal(t.err.Error())
-	}
-}
-
-func assertExpectedAndActualReturnErr(a expectedAndActualAssertion, expected, actual interface{}, msgAndArgs ...interface{}) error {
-	var t asserter
-	a(&t, expected, actual, msgAndArgs...)
-	return t.err
-}
-
-type expectedAndActualAssertion func(t assert.TestingT, expected, actual interface{}, msgAndArgs ...interface{}) bool
-
-// Errorf is used by the called assertion to report an error
-func (a *asserter) Errorf(format string, args ...interface{}) {
-	a.err = fmt.Errorf(format, args...)
-}
-
 func getServicesWithLabel(t *testing.T, label string) (*v1.ServiceList, error) {
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
 	clientset, err := k8s.GetKubernetesClientFromOptionsE(t, kubectlOptions)
-	assertActual(t, assert.Nil, err, "Couldn't get k8s client")
+	assert.Nil(t, err, "Couldn't get k8s client")
 	services, err := clientset.CoreV1().Services(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: label})
 	return services, err
 }
 
+// Find returns true if val exists in the slice array, false otherwise
 func Find(slice []string, val string) bool {
 	for _, item := range slice {
 		if item == val {
@@ -103,10 +66,14 @@ func Find(slice []string, val string) bool {
 
 func deployCluster(t *testing.T, customValues string, helmValues map[string]string) {
 	clusterChartPath, err := filepath.Abs("../../charts/k8ssandra")
-	assertActual(t, assert.Nil, err, "Couldn't find the absolute path for K8ssandra charts")
+	if err != nil {
+		t.Fatal("Couldn't find the absolute path for K8ssandra charts")
+	}
 
 	customChartPath, err := filepath.Abs("../charts/" + customValues)
-	assertActual(t, assert.Nil, err, fmt.Sprintf("Couldn't find the absolute path for custom values: %s", customValues))
+	if err != nil {
+		t.Fatal(fmt.Sprintf("Couldn't find the absolute path for custom values: %s", customValues))
+	}
 
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
 	helmOptions := &helm.Options{}
@@ -124,14 +91,16 @@ func deployCluster(t *testing.T, customValues string, helmValues map[string]stri
 
 	// Wait for cass-operator pod to be ready
 	attempts := 0
+	maxAttempts := 10
 	for {
 		attempts++
-		clientset, err := k8s.GetKubernetesClientFromOptionsE(t, kubectlOptions)
+		clientset, _ := k8s.GetKubernetesClientFromOptionsE(t, kubectlOptions)
 		pods, _ := clientset.CoreV1().Pods(namespace).List(context.Background(), metav1.ListOptions{LabelSelector: "app.kubernetes.io/name=cass-operator"})
-		err = assertExpectedAndActualReturnErr(assert.Equal, 1, len(pods.Items), "Couldn't find cass-operator pod")
-		if err == nil || attempts > 10 {
+		if len(pods.Items) == 1 {
 			k8s.RunKubectl(t, kubectlOptions, "wait", "--for=condition=Ready", "pod", "-l", "app.kubernetes.io/name=cass-operator", "--timeout=1800s")
 			break
+		} else if attempts > maxAttempts {
+			t.Fatal("Couldn't find cass-operator pod")
 		}
 		time.Sleep(20 * time.Second)
 	}
@@ -177,7 +146,9 @@ func waitForPodWithLabelToBeReady(t *testing.T, label string, waitTime time.Dura
 func getStargateService(t *testing.T) v1.Service {
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
 	clientset, err := k8s.GetKubernetesClientFromOptionsE(t, kubectlOptions)
-	assertActual(t, assert.Nil, err, "Couldn't get k8s client")
+	if err != nil {
+		t.Fatal("Couldn't get k8s client")
+	}
 
 	services, err := clientset.CoreV1().Services(namespace).List(context.Background(), metav1.ListOptions{})
 	for _, service := range services.Items {
@@ -192,8 +163,9 @@ func getStargateService(t *testing.T) v1.Service {
 var (
 	Info    = Yellow
 	Outline = Purple
-	Step    = Green
+	Success = Green
 	Running = Teal
+	Failed  = Red
 )
 
 var (
@@ -221,16 +193,30 @@ func timeTrack(start time.Time, name string) {
 }
 
 func logOngoingStep(description string) {
-	log.Printf(Teal(fmt.Sprintf("%s...", description)))
+	log.Printf(Running(fmt.Sprintf("%s...", description)))
 }
 
 func logDoneStep(description string) {
-	log.Printf(Green(fmt.Sprintf("%s", description)))
+	if r := recover(); r != nil {
+		log.Printf(Failed(fmt.Sprintf("%s", description)))
+	} else {
+		log.Printf(Success(fmt.Sprintf("%s", description)))
+	}
+}
+
+func logDoneStepWithFailSupport(t *testing.T, description string) {
+	if t.Failed() || t.Skipped() {
+		log.Printf(Failed(fmt.Sprintf("%s", description)))
+	} else if r := recover(); r != nil {
+		log.Printf(Failed(fmt.Sprintf("%s", description)))
+	} else {
+		log.Printf(Success(fmt.Sprintf("%s", description)))
+	}
 }
 
 func deleteKindCluster(t *testing.T) {
 	err := runShellCommand(exec.Command("kind", "delete", "cluster"))
-	assertActual(t, assert.Nil, err, "Kind cluster deletion failed")
+	assert.Nil(t, err, "Kind cluster deletion failed")
 }
 
 // MinIO related functions
@@ -249,9 +235,20 @@ func getMinioServiceName(t *testing.T) string {
 // Test steps
 ///////////////////////////////////
 
+// To create a new step, use the following template:
+//
+// func iDoSomethingImportantStep(t *testing.T, arg1, arg2 string) {
+//	stepDescription := fmt.Sprintf("Describe what the step does")
+//	logOngoingStep(stepDescription)
+//	defer logDoneStepWithFailSupport(t, stepDescription)
+//
+//	step implementation
+// }
+
 func iCanCheckThatResourceOfTypeWithLabelIsPresentInNamespaceStep(t *testing.T, resourceType, label string) {
 	stepDescription := fmt.Sprintf("I can check that a resource of type %s with label %s is present", resourceType, label)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	attempts := 0
 	maxAttempts := 2
@@ -261,7 +258,6 @@ func iCanCheckThatResourceOfTypeWithLabelIsPresentInNamespaceStep(t *testing.T, 
 		case "service":
 			services, _ := getServicesWithLabel(t, label)
 			if len(services.Items) > 0 {
-				logDoneStep(stepDescription)
 				return
 			}
 		default:
@@ -276,6 +272,10 @@ func iCanCheckThatResourceOfTypeWithLabelIsPresentInNamespaceStep(t *testing.T, 
 }
 
 func iCanCheckThatResourceOfTypeWithNameIsPresentInNamespaceStep(t *testing.T, resourceType, name string) {
+	stepDescription := fmt.Sprintf("I can check that resource %s of type %s is present", name, resourceType)
+	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
+
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
 	switch resourceType {
 	case "service":
@@ -288,6 +288,7 @@ func iCanCheckThatResourceOfTypeWithNameIsPresentInNamespaceStep(t *testing.T, r
 func aKindClusterIsRunningAndReachableStep(t *testing.T, clusterType string) {
 	stepDescription := "A kind cluster is running and reachable"
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	deleteKindCluster(t)
 	var kindClusterShell string
@@ -301,22 +302,21 @@ func aKindClusterIsRunningAndReachableStep(t *testing.T, clusterType string) {
 	}
 	err := runShellCommand(exec.Command(kindClusterShell))
 
-	assertActual(t, assert.Nil, err, "Kind cluster creation failed")
-	logDoneStep(stepDescription)
+	assert.Nil(t, err, "Kind cluster creation failed")
 }
 
 func iCanDeleteTheKindClusterStep(t *testing.T) {
 	stepDescription := "I can delete the kind cluster"
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	deleteKindCluster(t)
-
-	logDoneStep(stepDescription)
 }
 
 func iDeployAClusterWithOptionsInTheNamespaceUsingTheValuesStep(t *testing.T, options, customValues string) {
 	stepDescription := fmt.Sprintf("I can deploy a cluster with %s options using the %s values", options, customValues)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	helmValues := map[string]string{}
 	if options == "default" {
@@ -331,12 +331,12 @@ func iDeployAClusterWithOptionsInTheNamespaceUsingTheValuesStep(t *testing.T, op
 		}
 	}
 	deployCluster(t, customValues, helmValues)
-	logDoneStep(stepDescription)
 }
 
 func iDeployAClusterWithCassandraHeapAndMBStargateHeapUsingTheValuesStep(t *testing.T, options, cassandraHeap, stargateHeap, customValues string) {
 	stepDescription := fmt.Sprintf("I can deploy a cluster with %s options, %s Cassandra Heap and %s Stargate heap using the %s values", options, cassandraHeap, stargateHeap, customValues)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	splitOptions := strings.Split(options, "-")
 	medusaEnabled := "true"
@@ -366,39 +366,36 @@ func iDeployAClusterWithCassandraHeapAndMBStargateHeapUsingTheValuesStep(t *test
 		"kube-prometheus-stack.enabled": monitoringEnabled,
 	}
 	deployCluster(t, customValues, helmValues)
-
-	logDoneStep(stepDescription)
 }
 
 func iCanSeeTheNamespaceInTheListOfNamespacesStep(t *testing.T) {
 	stepDescription := fmt.Sprintf("I can see the %s namespace in the list of namespaces", namespace)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	kubectlOptions := k8s.NewKubectlOptions("", "", "default")
 	_, err := k8s.GetNamespaceE(t, kubectlOptions, namespace)
 	if err != nil {
 		t.Fatal(fmt.Sprintf("Couldn't find namespace %s", namespace))
 	}
-
-	logDoneStep(stepDescription)
 }
 
 func iCanSeeTheSecretInTheListOfSecretsInTheNamespaceStep(t *testing.T, secret string) {
 	stepDescription := fmt.Sprintf("I can see the %s secret in the namespaces", secret)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
 	_, err := k8s.GetSecretE(t, kubectlOptions, secret)
 	if err != nil {
 		t.Fatal(fmt.Sprintf("Couldn't find secret %s", secret))
 	}
-
-	logDoneStep(stepDescription)
 }
 
 func iCannotSeeTheNamespaceInTheListOfNamespacesStep(t *testing.T) {
 	stepDescription := fmt.Sprintf("I cannot see the %s namespace", namespace)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	kubectlOptions := k8s.NewKubectlOptions("", "", "default")
 	attempts := 0
@@ -421,35 +418,32 @@ func iCannotSeeTheNamespaceInTheListOfNamespacesStep(t *testing.T) {
 			t.Fatal(fmt.Sprintf("namespace %s was supposed to be deleted but was found in the k8s cluster", namespace))
 		}
 	}
-
-	logDoneStep(stepDescription)
 }
 
 func iCreateTheNamespaceStep(t *testing.T) {
 	stepDescription := fmt.Sprintf("I create the %s namespaces", namespace)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	namespace = fmt.Sprintf("k8ssandra%s", time.Now().Format("2006010215040507"))
 	log.Println(fmt.Sprintf("Creating namespace %s", namespace))
 	kubectlOptions := k8s.NewKubectlOptions("", "", "default")
 	k8s.CreateNamespace(t, kubectlOptions, namespace)
-
-	logDoneStep(stepDescription)
 }
 
 func iDeleteTheNamespaceStep(t *testing.T) {
 	stepDescription := fmt.Sprintf("I delete the namespace")
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	kubectlOptions := k8s.NewKubectlOptions("", "", "default")
 	k8s.DeleteNamespace(t, kubectlOptions, namespace)
-
-	logDoneStep(stepDescription)
 }
 
 func iInstallTraefikStep(t *testing.T) {
 	stepDescription := fmt.Sprintf("I install Traefik")
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	kubectlOptions := k8s.NewKubectlOptions("", "", "default")
 	options := &helm.Options{KubectlOptions: kubectlOptions}
@@ -462,8 +456,6 @@ func iInstallTraefikStep(t *testing.T) {
 	// helm install traefik traefik/traefik -n traefik --create-namespace -f docs/content/en/docs/topics/ingress/traefik/kind-deployment/traefik.values.yaml
 	valuesPath, _ := filepath.Abs("../../docs/content/en/docs/topics/ingress/traefik/kind-deployment/traefik.values.yaml")
 	helm.RunHelmCommandAndGetOutputE(t, options, "install", "traefik", "traefik/traefik", "-n", "traefik", "--create-namespace", "-f", valuesPath)
-
-	logDoneStep(stepDescription)
 }
 
 type credentials struct {
@@ -474,69 +466,64 @@ type credentials struct {
 func iCanSeeThatTheKeyspaceExistsInCassandraInNamespaceStep(t *testing.T, keyspace string) {
 	stepDescription := fmt.Sprintf("I can see that the %s keyspace exists in Cassandra", keyspace)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	reaperDbKeyspace := runCassandraQueryAndGetOutput(t, "describe keyspaces")
 	assert.Contains(t, reaperDbKeyspace, keyspace)
-
-	logDoneStep(stepDescription)
 }
 
 func iWaitForTheReaperPodToBeReadyInNamespaceStep(t *testing.T) {
 	stepDescription := fmt.Sprintf("I wait for the Reaper pod to be ready")
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	waitForPodWithLabelToBeReady(t, "app.kubernetes.io/managed-by=reaper-operator", 30*time.Second, 10)
-
-	logDoneStep(stepDescription)
 }
 
 func iCanReadRowsInTheTableInTheKeyspaceStep(t *testing.T, nbRows int, tableName, keyspaceName string) {
 	stepDescription := fmt.Sprintf("I can read %d rows in table %s.%s", nbRows, keyspaceName, tableName)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	output := runCassandraQueryAndGetOutput(t, fmt.Sprintf("SELECT id FROM %s.%s", keyspaceName, tableName))
-	assertExpectedAndActual(t, assert.Contains, output, fmt.Sprintf("(%d rows)", nbRows), "Wrong number of rows found in the table.")
-
-	logDoneStep(stepDescription)
+	assert.Contains(t, output, fmt.Sprintf("(%d rows)", nbRows))
 }
 
 func iCreateTheTableInTheKeyspaceStep(t *testing.T, tableName, keyspaceName string) {
 	stepDescription := fmt.Sprintf("I can create table %s.%s", keyspaceName, tableName)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	runCassandraQueryAndGetOutput(t, fmt.Sprintf("CREATE KEYSPACE IF NOT EXISTS %s with replication = {'class':'SimpleStrategy', 'replication_factor':1};", keyspaceName))
 	runCassandraQueryAndGetOutput(t, fmt.Sprintf("CREATE TABLE IF NOT EXISTS %s.%s(id timeuuid PRIMARY KEY, val text);", keyspaceName, tableName))
-
-	logDoneStep(stepDescription)
 }
 
 func iLoadRowsInTheTableInTheKeyspaceStep(t *testing.T, nbRows int, tableName, keyspaceName string) {
 	stepDescription := fmt.Sprintf("I load %d rows in table %s.%s", nbRows, keyspaceName, tableName)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	for i := 0; i < nbRows; i++ {
 		runCassandraQueryAndGetOutput(t, fmt.Sprintf("INSERT INTO %s.%s(id,val) values(now(), '%d');", keyspaceName, tableName, i))
 	}
-
-	logDoneStep(stepDescription)
 }
 
 // Medusa related functions
 func iCreateTheMedusaSecretInTheNamespaceApplyingTheFileStep(t *testing.T, secretFile string) {
 	stepDescription := fmt.Sprintf("I create the Medusa secret applying the %s secret file", secretFile)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	home, _ := os.UserHomeDir()
 	medusaSecretPath, _ := filepath.Abs(strings.Replace(secretFile, "~", home, 1))
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
 	k8s.KubectlApply(t, kubectlOptions, medusaSecretPath)
-
-	logDoneStep(stepDescription)
 }
 
 func iPerformABackupWithMedusaNamedStep(t *testing.T, backupName string) {
 	stepDescription := fmt.Sprintf("I perform a backup with Medusa named %s", backupName)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
 	backupChartPath, err := filepath.Abs("../../charts/backup")
@@ -571,13 +558,12 @@ func iPerformABackupWithMedusaNamedStep(t *testing.T, backupName string) {
 		}
 		time.Sleep(10 * time.Second)
 	}
-
-	logDoneStep(stepDescription)
 }
 
 func iRestoreTheBackupNamedUsingMedusaStep(t *testing.T, backupName string) {
 	stepDescription := fmt.Sprintf("I restore the backup with Medusa named %s", backupName)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	restoreChartPath, err := filepath.Abs("../../charts/restore")
 	if err != nil {
@@ -596,14 +582,13 @@ func iRestoreTheBackupNamedUsingMedusaStep(t *testing.T, backupName string) {
 	// Give a little time for the cassandraDatacenter resource to be recreated
 	time.Sleep(60 * time.Second)
 	waitForPodWithLabelToBeReady(t, "app.kubernetes.io/managed-by=cass-operator", 30*time.Second, 10)
-
-	logDoneStep(stepDescription)
 }
 
 // Reaper related steps
 func iCanCheckThatAClusterNamedWasRegisteredInReaperInNamespaceStep(t *testing.T, clusterName string) {
 	stepDescription := fmt.Sprintf("I can check that a cluster named %s was registered in Reaper", clusterName)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	restClient := resty.New()
 	attempts := 0
@@ -618,8 +603,7 @@ func iCanCheckThatAClusterNamedWasRegisteredInReaperInNamespaceStep(t *testing.T
 			var clusters []string
 			json.Unmarshal([]byte(data), &clusters)
 			if len(clusters) > 0 {
-				assertExpectedAndActual(t, assert.Equal, clusterName, clusters[0], fmt.Sprintf("%s cluster wasn't properly registered in Reaper", clusterName))
-				logDoneStep(stepDescription)
+				assert.Equal(t, clusterName, clusters[0], fmt.Sprintf("%s cluster wasn't properly registered in Reaper", clusterName))
 				return
 			}
 		}
@@ -634,6 +618,7 @@ func iCanCheckThatAClusterNamedWasRegisteredInReaperInNamespaceStep(t *testing.T
 func iCanCancelTheRunningRepairStep(t *testing.T) {
 	stepDescription := fmt.Sprintf("I can cancel the running repair")
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	restClient := resty.New()
 	// Start the previously created repair run
@@ -647,13 +632,12 @@ func iCanCancelTheRunningRepairStep(t *testing.T) {
 	if err != nil || response.StatusCode() != 200 {
 		t.Fatal(fmt.Sprintf("Failed aborting repair %s: %s / %s", repairId, err, response.Body()))
 	}
-
-	logDoneStep(stepDescription)
 }
 
 func iTriggerARepairOnTheKeyspaceStep(t *testing.T, keyspace string) {
 	stepDescription := fmt.Sprintf("I trigger a repair on keyspace %s", keyspace)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	restClient := resty.New()
 
@@ -690,13 +674,12 @@ func iTriggerARepairOnTheKeyspaceStep(t *testing.T, keyspace string) {
 	if err != nil || response.StatusCode() != 200 {
 		t.Fatal(fmt.Sprintf("Failed starting repair %s: %s / %s", repairId, err, response.Body()))
 	}
-
-	logDoneStep(stepDescription)
 }
 
 func iWaitForAtLeastOneSegmentToBeProcessedStep(t *testing.T) {
 	stepDescription := fmt.Sprintf("I wait for at least one segment to be processed")
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	restClient := resty.New()
 	attempts := 0
@@ -720,13 +703,12 @@ func iWaitForAtLeastOneSegmentToBeProcessedStep(t *testing.T) {
 		}
 	}
 	t.Fatal(fmt.Sprintf("No repair segment was fully processed within timeout"))
-
-	logDoneStep(stepDescription)
 }
 
 func iCanRunACyclesStressTestWithReadsAndAOpssRateWithinTimeoutStep(t *testing.T, stressCycles, percentRead string, rate, timeout int) {
 	stepDescription := fmt.Sprintf("I run a %s cycles stess test with %s reads and %d ops/s within %d seconds", stressCycles, percentRead, rate, timeout)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
 	cqlCredentials := getUsernamePassword(t, "k8ssandra-superuser", namespace)
@@ -747,13 +729,12 @@ func iCanRunACyclesStressTestWithReadsAndAOpssRateWithinTimeoutStep(t *testing.T
 	output := runShellCommandAndGetOutput(
 		exec.Command("bash", "-c", fmt.Sprintf("kubectl logs job/%s -n %s | grep -e cqliot_default_main.cycles.servicetime -e cqliot_default_main.cycles.responsetime", jobName, namespace)))
 	log.Println(Outline(output))
-
-	logDoneStep(stepDescription)
 }
 
 func iWaitForTheStargatePodsToBeReadyStep(t *testing.T) {
 	stepDescription := fmt.Sprintf("I wait for the Stargate pods to be ready")
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
 
@@ -773,13 +754,12 @@ func iWaitForTheStargatePodsToBeReadyStep(t *testing.T) {
 		}
 	}
 	t.Fatal("Stargate deployment didn't roll out within timeout")
-
-	logDoneStep(stepDescription)
 }
 
 func iDeployMinIOUsingHelmAndCreateTheBucketStep(t *testing.T, bucketName string) {
 	stepDescription := fmt.Sprintf("I deploy MinIO using Helm and create the %s bucket", bucketName)
 	logOngoingStep(stepDescription)
+	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	helmOptions := &helm.Options{
 		KubectlOptions: k8s.NewKubectlOptions("", "", "default"),
@@ -789,6 +769,4 @@ func iDeployMinIOUsingHelmAndCreateTheBucketStep(t *testing.T, bucketName string
 	helm.RunHelmCommandAndGetOutputE(t, helmOptions, "install",
 		"--set", fmt.Sprintf("accessKey=minio_key,secretKey=minio_secret,defaultBucket.enabled=true,defaultBucket.name=%s", bucketName),
 		"--generate-name", "minio/minio", "-n", "minio", "--create-namespace")
-
-	logDoneStep(stepDescription)
 }
