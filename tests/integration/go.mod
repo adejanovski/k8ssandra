@@ -1,4 +1,4 @@
-module integration_tests
+module integration
 
 go 1.14
 

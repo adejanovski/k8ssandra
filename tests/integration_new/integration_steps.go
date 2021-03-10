@@ -65,12 +65,12 @@ func Find(slice []string, val string) bool {
 }
 
 func deployCluster(t *testing.T, customValues string, helmValues map[string]string) {
-	clusterChartPath, err := filepath.Abs("../../charts/k8ssandra")
+	clusterChartPath, err := filepath.Abs("../../../charts/k8ssandra")
 	if err != nil {
 		t.Fatal("Couldn't find the absolute path for K8ssandra charts")
 	}
 
-	customChartPath, err := filepath.Abs("../charts/" + customValues)
+	customChartPath, err := filepath.Abs("../../charts/" + customValues)
 	if err != nil {
 		t.Fatal(fmt.Sprintf("Couldn't find the absolute path for custom values: %s", customValues))
 	}
@@ -294,9 +294,9 @@ func aKindClusterIsRunningAndReachableStep(t *testing.T, clusterType string) {
 	var kindClusterShell string
 	switch clusterType {
 	case "one worker":
-		kindClusterShell, _ = filepath.Abs("../scripts/cluster_one_worker.sh")
+		kindClusterShell, _ = filepath.Abs("../../scripts/cluster_one_worker.sh")
 	case "three workers":
-		kindClusterShell, _ = filepath.Abs("../scripts/cluster_three_workers.sh")
+		kindClusterShell, _ = filepath.Abs("../../scripts/cluster_three_workers.sh")
 	default:
 		t.Fatal(fmt.Sprintf("Kind cluster creation shell script not found for %s", clusterType))
 	}
@@ -454,7 +454,7 @@ func iInstallTraefikStep(t *testing.T) {
 
 	// Deploy traefik
 	// helm install traefik traefik/traefik -n traefik --create-namespace -f docs/content/en/docs/topics/ingress/traefik/kind-deployment/traefik.values.yaml
-	valuesPath, _ := filepath.Abs("../../docs/content/en/docs/topics/ingress/traefik/kind-deployment/traefik.values.yaml")
+	valuesPath, _ := filepath.Abs("../../../docs/content/en/docs/topics/ingress/traefik/kind-deployment/traefik.values.yaml")
 	helm.RunHelmCommandAndGetOutputE(t, options, "install", "traefik", "traefik/traefik", "-n", "traefik", "--create-namespace", "-f", valuesPath)
 }
 
@@ -526,7 +526,7 @@ func iPerformABackupWithMedusaNamedStep(t *testing.T, backupName string) {
 	defer logDoneStepWithFailSupport(t, stepDescription)
 
 	kubectlOptions := k8s.NewKubectlOptions("", "", namespace)
-	backupChartPath, err := filepath.Abs("../../charts/backup")
+	backupChartPath, err := filepath.Abs("../../../charts/backup")
 	if err != nil {
 		t.Fatal(fmt.Sprintf("Couldn't find the absolute path for backup charts"))
 	}
@@ -565,7 +565,7 @@ func iRestoreTheBackupNamedUsingMedusaStep(t *testing.T, backupName string) {
 	logOngoingStep(stepDescription)
 	defer logDoneStepWithFailSupport(t, stepDescription)
 
-	restoreChartPath, err := filepath.Abs("../../charts/restore")
+	restoreChartPath, err := filepath.Abs("../../../charts/restore")
 	if err != nil {
 		t.Fatal(fmt.Sprintf("Couldn't find the absolute path for restore charts"))
 	}

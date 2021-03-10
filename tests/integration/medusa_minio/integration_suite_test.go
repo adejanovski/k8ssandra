@@ -1,4 +1,4 @@
-package integration_test
+package medusa_minio
 
 import (
 	"testing"

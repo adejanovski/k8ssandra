@@ -8,7 +8,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        scenario: ["TestReaperDeploymentScenario", "TestMedusaMinioScenario", "TestMedusaS3Scenario"]
+        scenario: ["medusa_s3", "medusa_minio", "reaper"]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -49,6 +49,12 @@ jobs:
           # install jq
           sudo apt-get install jq -y
 
+          # install Ginkgo
+          go get -u github.com/onsi/ginkgo/ginkgo
+
+          # Update Helm dependencies
+          ./scripts/update-helm-deps.sh
+
       - name: Update hosts file
         run: |
           echo "127.0.0.1 repair.localhost" | sudo tee -a /etc/hosts
@@ -61,5 +67,5 @@ jobs:
 
       - name: Run Integration Tests
         run: |
-          cd tests/integration_new
-          go test -timeout 30m -run ${{ matrix.scenario }}
+          cd tests/integration
+          go test ./${{ matrix.scenario }} -timeout 30m -ginkgo.failFast --ginkgo.trace --ginkgo.progress --ginkgo.v -v -p 1

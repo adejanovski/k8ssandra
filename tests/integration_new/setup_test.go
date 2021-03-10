@@ -1,12 +1,27 @@
 package integrationnew
 
 import (
+	"fmt"
+	"log"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"testing"
 )
 
 func TestMain(m *testing.M) {
+	updateHelmDeps()
 	os.Exit(m.Run())
+}
+
+func updateHelmDeps() {
+	updateHelmDepsScriptPath, _ := filepath.Abs("../../scripts/update-helm-deps.sh")
+	log.Println("Updating Helm dependencies...")
+	err := runShellCommand(exec.Command("bash", "-c", updateHelmDepsScriptPath))
+	if err != nil {
+		log.Fatalf(fmt.Sprintf("Failed updating Helm dependencies: %s", err.Error()))
+		os.Exit(1)
+	}
 }
 
 // Reaper scenario:
