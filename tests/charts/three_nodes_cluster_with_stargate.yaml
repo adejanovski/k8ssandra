@@ -24,7 +24,6 @@ stargate:
       enabled: true
 
 medusa:
-
   multiTenant: true
   storage: s3
 

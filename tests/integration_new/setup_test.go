@@ -107,3 +107,21 @@ func TestMedusaS3Scenario(t *testing.T) {
 func TestMedusaMinioScenario(t *testing.T) {
 	MedusaDeploymentScenario("minio", t)
 }
+
+// Stress test
+func TestStressLoadOne(t *testing.T) {
+	aKindClusterIsRunningAndReachableStep(t, "three workers")
+	iInstallTraefikStep(t)
+	iCreateTheNamespaceStep(t)
+	iCanSeeTheNamespaceInTheListOfNamespacesStep(t)
+	iCreateTheMedusaSecretInTheNamespaceApplyingTheFileStep(t, "~/medusa_secret.yaml")
+	iDeployAClusterWithCassandraHeapAndMBStargateHeapUsingTheValuesStep(t, "reaper-medusa-monitoring", "500M", "500M", "three_nodes_cluster_with_stargate.yaml")
+	iWaitForTheStargatePodsToBeReadyStep(t)
+	iCanRunACyclesStressTestWithReadsAndAOpssRateWithinTimeoutStep(t, "10k", "30%", 100, 900)
+	iCanRunACyclesStressTestWithReadsAndAOpssRateWithinTimeoutStep(t, "50k", "30%", 500, 900)
+	iCanRunACyclesStressTestWithReadsAndAOpssRateWithinTimeoutStep(t, "100k", "30%", 1000, 900)
+	iCanRunACyclesStressTestWithReadsAndAOpssRateWithinTimeoutStep(t, "150k", "30%", 1500, 900)
+	iDeleteTheNamespaceStep(t)
+	iCannotSeeTheNamespaceInTheListOfNamespacesStep(t)
+	iCanDeleteTheKindClusterStep(t)
+}
