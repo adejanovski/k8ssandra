@@ -19,7 +19,6 @@ import (
 	"github.com/gruntwork-io/terratest/modules/random"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -421,7 +420,9 @@ func ICanSeeThatTheKeyspaceExistsInCassandraInNamespaceStep(keyspace string) {
 	By(fmt.Sprintf("I can see that the %s keyspace exists in Cassandra", keyspace))
 
 	keyspaces := runCassandraQueryAndGetOutput("describe keyspaces")
-	assert.Contains(GinkgoT(), keyspaces, keyspace)
+
+	// Check that the keyspace exists in the list of keyspaces
+	Expect(keyspaces).Should(ContainSubstring(keyspace))
 }
 
 func IWaitForTheReaperPodToBeReadyInNamespaceStep() {
@@ -434,7 +435,9 @@ func ICanReadRowsInTheTableInTheKeyspaceStep(nbRows int, tableName, keyspaceName
 	By(fmt.Sprintf("I can read %d rows in table %s.%s", nbRows, keyspaceName, tableName))
 
 	output := runCassandraQueryAndGetOutput(fmt.Sprintf("SELECT id FROM %s.%s", keyspaceName, tableName))
-	assert.Contains(GinkgoT(), output, fmt.Sprintf("(%d rows)", nbRows))
+
+	// Check that we have the right number of rows
+	Expect(output).Should(ContainSubstring(fmt.Sprintf("(%d rows)", nbRows)))
 }
 
 func ICreateTheTableInTheKeyspaceStep(tableName, keyspaceName string) {
@@ -539,7 +542,7 @@ func ICanCheckThatAClusterNamedWasRegisteredInReaperInNamespaceStep(clusterName 
 			var clusters []string
 			json.Unmarshal([]byte(data), &clusters)
 			if len(clusters) > 0 {
-				assert.Equal(GinkgoT(), clusterName, clusters[0], fmt.Sprintf("%s cluster wasn't properly registered in Reaper", clusterName))
+				Expect(clusterName).Should(Equal(clusters[0]))
 				return
 			}
 		}

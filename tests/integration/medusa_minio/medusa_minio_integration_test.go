@@ -22,7 +22,7 @@ var _ = Describe("Deploy a K8ssandra cluster and perform backups using MinIO", f
 		It("Create the Medusa secret ", func() {
 			IDeployMinIOUsingHelmAndCreateTheBucketStep("k8ssandra-medusa")
 			ICreateTheMedusaSecretInTheNamespaceApplyingTheFileStep("../secret/medusa_minio_secret.yaml")
-			ICanSeeTheSecretInTheListOfSecretsInTheNamespaceStep("medusa-bucket-ke")
+			ICanSeeTheSecretInTheListOfSecretsInTheNamespaceStep("medusa-bucket-key")
 		})
 		It("Install K8ssandra with Medusa on MinIO", func() {
 			IDeployAClusterWithOptionsInTheNamespaceUsingTheValuesStep("minio", "one_node_cluster_with_medusa_minio.yaml")
@@ -44,7 +44,7 @@ var _ = Describe("Deploy a K8ssandra cluster and perform backups using MinIO", f
 		})
 		It("Load 10 additional rows and check that we can read 20 rows now", func() {
 			ILoadRowsInTheTableInTheKeyspaceStep(10, medusaMinioTestTable, medusaMinioTestKeyspace)
-			ICanReadRowsInTheTableInTheKeyspaceStep(30, medusaMinioTestTable, medusaMinioTestKeyspace)
+			ICanReadRowsInTheTableInTheKeyspaceStep(20, medusaMinioTestTable, medusaMinioTestKeyspace)
 		})
 		It("Restore the backup", func() {
 			IRestoreTheBackupNamedUsingMedusaStep("backup1")
