@@ -73,14 +73,17 @@ jobs:
       - name: Collect artifacts
         if: ${{ failure() }}
         run: |
-          ./scripts/collect_artifacts.sh
+          mkdir -p ~/artifacts
+          ~/scripts/collect_artifacts.sh ~/artifacts
 
       - uses: actions/upload-artifact@v2
         if: ${{ failure() }}
         with:
-          name: my-artifact
-          path: ./artifacts/
+          name: k8s-artifacts-${{ matrix.scenario }}
+          path: ~/artifacts/
       
-      - name: Setup tmate session
-        if: ${{ failure() }}
-        uses: mxschmitt/action-tmate@v3
+      # Uncomment to run with SSH on failure
+      #- name: Setup tmate session
+      #  if: ${{ failure() }}
+      #  uses: mxschmitt/action-tmate@v3
+      #  timeout-minutes: 5

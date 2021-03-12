@@ -22,7 +22,7 @@ var _ = Describe("Deploy a K8ssandra cluster and perform backups using MinIO", f
 		It("Create the Medusa secret ", func() {
 			IDeployMinIOUsingHelmAndCreateTheBucketStep("k8ssandra-medusa")
 			ICreateTheMedusaSecretInTheNamespaceApplyingTheFileStep("../secret/medusa_minio_secret.yaml")
-			ICanSeeTheSecretInTheListOfSecretsInTheNamespaceStep("medusa-bucket-key")
+			ICanSeeTheSecretInTheListOfSecretsInTheNamespaceStep("medusa-bucket-ke")
 		})
 		It("Install K8ssandra with Medusa on MinIO", func() {
 			IDeployAClusterWithOptionsInTheNamespaceUsingTheValuesStep("minio", "one_node_cluster_with_medusa_minio.yaml")
