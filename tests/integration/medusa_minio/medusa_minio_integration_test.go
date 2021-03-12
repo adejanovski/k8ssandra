@@ -44,7 +44,7 @@ var _ = Describe("Deploy a K8ssandra cluster and perform backups using MinIO", f
 		})
 		It("Load 10 additional rows and check that we can read 20 rows now", func() {
 			ILoadRowsInTheTableInTheKeyspaceStep(10, medusaMinioTestTable, medusaMinioTestKeyspace)
-			ICanReadRowsInTheTableInTheKeyspaceStep(20, medusaMinioTestTable, medusaMinioTestKeyspace)
+			ICanReadRowsInTheTableInTheKeyspaceStep(30, medusaMinioTestTable, medusaMinioTestKeyspace)
 		})
 		It("Restore the backup", func() {
 			IRestoreTheBackupNamedUsingMedusaStep("backup1")

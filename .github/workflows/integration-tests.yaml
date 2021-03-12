@@ -68,4 +68,19 @@ jobs:
       - name: Run Integration Tests
         run: |
           cd tests/integration
-          go test ./${{ matrix.scenario }} -timeout 30m -ginkgo.failFast --ginkgo.trace --ginkgo.progress --ginkgo.v -v -p 1
+          go test ./${{ matrix.scenario }} -timeout 30m -ginkgo.failFast --ginkgo.trace --ginkgo.progress --ginkgo.slowSpecThreshold=900 --ginkgo.v -v -p 1
+
+      - name: Collect artifacts
+        if: ${{ failure() }}
+        run: |
+          ./scripts/collect_artifacts.sh
+
+      - uses: actions/upload-artifact@v2
+        if: ${{ failure() }}
+        with:
+          name: my-artifact
+          path: ./artifacts/
+      
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
