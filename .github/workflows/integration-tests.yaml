@@ -89,6 +89,6 @@ jobs:
       
       # Uncomment to run with SSH on failure
       - name: Setup tmate session
-        if: ${{ failure() }} && "contains(github.event.head_commit.message, '[SSH]')"
+        if: "failure() && contains(github.event.head_commit.message, '[SSH]')"
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 10
