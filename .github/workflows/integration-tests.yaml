@@ -12,7 +12,7 @@ jobs:
       fail-fast: false
       matrix:
         cassandra_version: ["3.11.10", "4.0.0"]
-        scenario: ["TestMedusaDeploymentScenario/\"S3\"", "TestMedusaDeploymentScenario/\"Minio\"", "TestReaperDeploymentScenario", "TestMonitoringDeploymentScenario", "TestStargateDeploymentScenario"]
+        scenario: ["TestStargateDeploymentScenario"]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -73,7 +73,7 @@ jobs:
         run: |
           # Set a valid name for the artifacts in case of failure
           echo "ARTIFACT_NAME=k8s-artifacts-${K8SSANDRA_CASSANDRA_VERSION}-$(echo $SCENARIO|tr '":/' '___')" >> $GITHUB_ENV
-          make kind-integ-test TESTS="$SCENARIO"
+          make kind-integ-testsss TESTS="$SCENARIO"
 
       - name: Collect artifacts
         if: ${{ failure() }}
@@ -89,6 +89,6 @@ jobs:
       
       # Uncomment to run with SSH on failure
       - name: Setup tmate session
-        if: ${{ startsWith(github.event.head_commit.message, '[SSH]') }}
+        if: ${{ failure() }} && "contains(github.event.head_commit.message, '[SSH]')"
         uses: mxschmitt/action-tmate@v3
         timeout-minutes: 10
