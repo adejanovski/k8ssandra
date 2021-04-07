@@ -58,6 +58,7 @@ func RestoreBackup(t *testing.T, namespace, backupName string) {
 			"backup.name":              backupName,
 			"cassandraDatacenter.name": datacenterName,
 			"name":                     "restore-test2",
+			"shutdown":                 "true",
 		},
 		KubectlOptions: getKubectlOptions(namespace),
 	}
