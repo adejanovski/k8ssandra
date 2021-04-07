@@ -20,8 +20,14 @@ for pod in $(kubectl get pods -n $k8ssandra_ns|grep dc1-default-sts|cut -d' ' -f
     kubectl logs pod/$pod medusa -n $k8ssandra_ns > $ARTIFACTS_DIR/${pod}_medusa.log || echo "can't extract medusa logs"
 done
 
+# Extract logs from the reaper and stargate pods
+for pod in $(kubectl get pods -n $k8ssandra_ns|grep -e reaper -e stargate|cut -d' ' -f1); do
+    echo "Storing artifacts for pod $pod..."
+    kubectl logs pod/$pod -n $k8ssandra_ns > $ARTIFACTS_DIR/${pod}.log || echo "can't extract $pod log"
+done
+
 # Extract data from all pods
-for pod in $(kubectl get pods -n $k8ssandra_ns|cut -d' ' -f1); do
+for pod in $(kubectl get pods -n $k8ssandra_ns|grep -v "NAME":|cut -d' ' -f1); do
     echo "Extracting description for pod $pod..."
     kubectl get pod/$pod -o yaml -n $k8ssandra_ns > $ARTIFACTS_DIR/pod_${pod}.txt
     kubectl describe pod/$pod -n $k8ssandra_ns > $ARTIFACTS_DIR/pod_${pod}_describe.txt
