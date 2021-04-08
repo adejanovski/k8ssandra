@@ -25,7 +25,8 @@ jobs:
       fail-fast: false
       matrix:
         cassandra_version: ["3.11.10", "4.0.0"]
-        scenario: ["TestMedusaDeploymentScenario/\"S3\"", "TestMedusaDeploymentScenario/\"Minio\"", "TestReaperDeploymentScenario", "TestMonitoringDeploymentScenario", "TestStargateDeploymentScenario"]
+        #scenario: ["TestMedusaDeploymentScenario/\"S3\"", "TestMedusaDeploymentScenario/\"Minio\"", "TestReaperDeploymentScenario", "TestMonitoringDeploymentScenario", "TestStargateDeploymentScenario"]
+        scenario: ["TestMedusaDeploymentScenario/\"Minio\"", "TestMonitoringDeploymentScenario"]
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -79,7 +80,7 @@ jobs:
             echo "IT_CAN_RUN=no" >> $GITHUB_ENV
           fi
       - name: Run Integration Tests
-        if: ${{ env.IT_CAN_RUN == 'yes' }}
+        if: ${{ env.IT_CAN_RUN == 'test' }}
         env:
           SCENARIO: ${{ matrix.scenario }}
           K8SSANDRA_CASSANDRA_VERSION: ${{ matrix.cassandra_version }}
