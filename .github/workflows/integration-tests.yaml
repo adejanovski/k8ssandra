@@ -1,5 +1,4 @@
 ---
-name: Integration Tests
 on: 
   pull_request:
     paths:
@@ -16,8 +15,8 @@ on:
       - 'cmd/**'
       - 'charts/**'
       - 'tests/integration/**'
-  tags:
-    - 'v*'
+    tags:
+      - 'v*'
 jobs:
   integration-tests:
     runs-on: ubuntu-20.04
