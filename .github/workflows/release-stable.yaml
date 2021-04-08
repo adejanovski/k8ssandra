@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: ["Integration Tests"]
     branches:
-      - refs/tags/v*
+      - '**-run-ci'
     types: 
       - completed
 
