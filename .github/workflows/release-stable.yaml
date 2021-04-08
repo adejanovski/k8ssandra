@@ -5,6 +5,7 @@ on:
     workflows: ["Integration Tests"]
     types: 
       - completed
+      - requested
 
 jobs:
   setup:
