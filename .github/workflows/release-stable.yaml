@@ -2,7 +2,7 @@
 name: Release Stable Charts
 on:
   workflow_run:
-    workflows: ["Integration Tests"]
+    workflows: [".github/workflows/integration-tests.yaml"]
     types: 
       - completed
 
