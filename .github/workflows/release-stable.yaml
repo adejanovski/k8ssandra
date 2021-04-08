@@ -3,7 +3,8 @@ name: Release Stable Charts
 on:
   workflow_run:
     workflows: ["Integration Tests"]
-    #tags: ['v*']
+    branches:
+      - refs/tags/v*
     types: 
       - completed
 
