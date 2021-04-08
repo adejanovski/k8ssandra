@@ -3,8 +3,6 @@ name: Release Stable Charts
 on:
   workflow_run:
     workflows: ["Integration Tests"]
-    branches:
-      - '**-run-ci'
     types: 
       - completed
 
