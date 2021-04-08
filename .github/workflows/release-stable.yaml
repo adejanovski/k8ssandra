@@ -2,10 +2,10 @@
 name: Release Stable Charts
 on:
   workflow_run:
-    workflows: ["Integration Tests"]
+    workflows: 
+      - "Integration Tests"
     types: 
       - completed
-      - requested
 
 jobs:
   setup:
