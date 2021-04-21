@@ -1,9 +1,11 @@
 ---
 name: Release Next Charts
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: 
+      - "Integration Tests"
+    types: 
+      - completed
 jobs:
   setup:
     runs-on: ubuntu-latest
