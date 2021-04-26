@@ -209,13 +209,9 @@ jobs:
         working-directory: build
 
       # GitHub Release
-      - name: Rename chart package for GitHub Release
-        if: github.event_name == 'release' && github.event.action == 'published'
-        run: mv build/charts build/k8ssandra-${{ env.RELEASE_VERSION }}.tgz
-
       - name: Upload chart package to GitHub Release
         uses: fnkr/github-action-ghr@v1
         if: github.event_name == 'release' && github.event.action == 'published'
         env:
-          GHR_PATH: build/
+          GHR_PATH: build/k8ssandra-${{ env.RELEASE_VERSION }}.tgz
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
