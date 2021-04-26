@@ -116,7 +116,7 @@ jobs:
       ${{ (( github.event_name == 'release' && github.event.action == 'published' ) 
         || ( github.event_name == 'push' && github.ref == 'refs/heads/main' )) }}
     runs-on: ubuntu-latest
-    needs: integration-tests
+    #needs: integration-tests
     env:
       HELM_VERSION: 3.5.3
       YQ_VERSION: v4.6.3
