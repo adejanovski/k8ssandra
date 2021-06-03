@@ -182,7 +182,7 @@ func WaitForCassDcToBeUpdating(t *testing.T, namespace string) {
 func RestartStargate(t *testing.T, releaseName, dcName, namespace string) {
 	key := types.NamespacedName{Namespace: namespace, Name: releaseName + "-" + dcName + "-stargate"}
 	retryInterval := 5 * time.Second
-	scaleDownTimeout := 2 * time.Minute
+	scaleDownTimeout := 5 * time.Minute
 	scaleUpTimeout := 5 * time.Minute
 
 	g(t).Expect(WaitForDeploymentReady(t, key, retryInterval, scaleDownTimeout)).To(BeTrue(), "failed waiting for Stargate to scale down")
@@ -219,7 +219,7 @@ func WaitForDeploymentReady(t *testing.T, key types.NamespacedName, retryInterva
 			return false
 		}
 		return deployment.Status.Replicas == deployment.Status.ReadyReplicas
-	}, timeout, retryInterval).Should(BeTrue())
+	}, timeout, retryInterval).Should(BeTrue(), "Failed waiting for Stargate deployment to be ready")
 }
 
 func WaitForCassDcToBeReady(t *testing.T, namespace string) {
