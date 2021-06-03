@@ -69,7 +69,6 @@ jobs:
         cassandra_version: ["3.11.10", "4.0.0"]
         #scenario: ["TestMedusaDeploymentScenario/\"S3\"", "TestMedusaDeploymentScenario/\"Minio\"", "TestMedusaDeploymentScenario/\"local\"", "TestReaperDeploymentScenario", "TestMonitoringDeploymentScenario", "TestStargateDeploymentScenario", "TestRestoreAfterUpgrade", "TestUpgradeScenario"]
         scenario: ["TestFullStackScenario"]
-
     steps:
       - name: Checkout
         uses: actions/checkout@v2
