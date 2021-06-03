@@ -185,7 +185,7 @@ func RestartStargate(t *testing.T, releaseName, dcName, namespace string) {
 	scaleDownTimeout := 2 * time.Minute
 	scaleUpTimeout := 5 * time.Minute
 
-	g(t).Expect(WaitForDeploymentReady(t, key, retryInterval, scaleDownTimeout)).To(Succeed(), "failed waiting for Stargate to scale down")
+	g(t).Expect(WaitForDeploymentReady(t, key, retryInterval, scaleDownTimeout)).To(BeTrue(), "failed waiting for Stargate to scale down")
 
 	deployment := &appsv1.Deployment{}
 	err := testClient.Get(context.Background(), key, deployment)
@@ -206,7 +206,7 @@ func RestartStargate(t *testing.T, releaseName, dcName, namespace string) {
 	err = testClient.Patch(context.Background(), deployment, patch)
 	g(t).Expect(err).To(BeNil(), fmt.Sprintf("failed to scale up Stargate: %s", err))
 
-	g(t).Expect(WaitForDeploymentReady(t, key, retryInterval, scaleUpTimeout)).To(Succeed(), "failed waiting for Stargate to scale up")
+	g(t).Expect(WaitForDeploymentReady(t, key, retryInterval, scaleUpTimeout)).To(BeTrue(), "failed waiting for Stargate to scale up")
 }
 
 // WaitForDeploymentReady Polls the deployment status until the Deployment is
