@@ -38,9 +38,9 @@ pkg-test:
 
 integ-test:
 ifeq ($(TESTS), all)
-	CLUSTER_CLEANUP=$(CLUSTER_CLEANUP) go test $(GO_FLAGS) -test.timeout=30m ./tests/integration -run="TestFullStackScenario"
+	CLUSTER_CLEANUP=$(CLUSTER_CLEANUP) go test $(GO_FLAGS) -test.timeout=45m ./tests/integration -run="TestFullStackScenario"
 else
-	CLUSTER_CLEANUP=$(CLUSTER_CLEANUP) go test $(GO_FLAGS) -test.timeout=30m ./tests/integration -run=$(TESTS)
+	CLUSTER_CLEANUP=$(CLUSTER_CLEANUP) go test $(GO_FLAGS) -test.timeout=45m ./tests/integration -run=$(TESTS)
 endif
 
 kind-integ-test: create-kind-cluster tools-docker-kind-load integ-test
