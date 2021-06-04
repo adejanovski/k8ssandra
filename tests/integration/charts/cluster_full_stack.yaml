@@ -1,17 +1,17 @@
 cassandra:
   heap:
-   size: 400M
-   newGenSize: 100M
+   size: 500M
+   newGenSize: 200M
   datacenters:
   - name: dc1
-    size: 3
+    size: 2
   ingress:
     enabled: false
 
 stargate:
   enabled: true
   replicas: 1
-  heapMB: 200
+  heapMB: 300
   ingress:
     host: stargate.127.0.0.1.nip.io
     enabled: true
