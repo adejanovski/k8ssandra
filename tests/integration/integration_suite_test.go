@@ -121,7 +121,7 @@ func TestFullStackScenario(t *testing.T) {
 }
 
 func deployFullStackCluster(t *testing.T, namespace string, useLocalCharts bool) {
-	DeployClusterWithValues(t, namespace, "minio", "cluster_full_stack.yaml", 2, false, useLocalCharts, "")
+	DeployClusterWithValues(t, namespace, "minio", "cluster_full_stack.yaml", 3, false, useLocalCharts, "")
 	checkResourcePresenceForReaper(t, namespace)
 	waitForReaperPod(t, namespace)
 	checkReaperRegistered(t, namespace)
@@ -153,7 +153,7 @@ func testReaper(t *testing.T, namespace string) {
 
 func deployClusterForReaper(t *testing.T, namespace string, useLocalCharts bool) {
 	log.Println(Info("Deploying K8ssandra and waiting for Reaper to be ready"))
-	DeployClusterWithValues(t, namespace, "default", "cluster_with_reaper.yaml", 2, false, useLocalCharts, "")
+	DeployClusterWithValues(t, namespace, "default", "cluster_with_reaper.yaml", 3, false, useLocalCharts, "")
 	checkResourcePresenceForReaper(t, namespace)
 	waitForReaperPod(t, namespace)
 	checkReaperRegistered(t, namespace)
