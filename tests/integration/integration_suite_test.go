@@ -153,7 +153,7 @@ func testReaper(t *testing.T, namespace string) {
 
 func deployClusterForReaper(t *testing.T, namespace string, useLocalCharts bool) {
 	log.Println(Info("Deploying K8ssandra and waiting for Reaper to be ready"))
-	DeployClusterWithValues(t, namespace, "default", "cluster_with_reaper.yaml", 3, false, useLocalCharts, "")
+	DeployClusterWithValues(t, namespace, "default", "cluster_with_reaper.yaml", 6, false, useLocalCharts, "")
 	checkResourcePresenceForReaper(t, namespace)
 	waitForReaperPod(t, namespace)
 	checkReaperRegistered(t, namespace)

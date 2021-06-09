@@ -1,10 +1,11 @@
 cassandra:
+  allowMultipleNodesPerWorker: true
   heap:
-   size: 500M
-   newGenSize: 200M
+   size: 400M
+   newGenSize: 100M
   datacenters:
   - name: dc1
-    size: 3
+    size: 6
   ingress:
     enabled: false
 
