@@ -1,12 +1,5 @@
 cassandra:
-  allowMultipleNodesPerWorker: true
-  resources:
-    requests:
-      cpu: "1000m"
-      memory: "400Mi"
-    limits:
-      cpu: "2000m"
-      memory: "800Mi"
+  allowMultipleNodesPerWorker: false
   heap:
    size: 400M
    newGenSize: 100M

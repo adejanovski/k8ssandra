@@ -60,6 +60,9 @@ nodes:
 - role: worker
 - role: worker
 - role: worker
+- role: worker
+- role: worker
+- role: worker
 EOF
 
 # connect the registry to the cluster network
