@@ -90,6 +90,10 @@ func TestFullStackScenario(t *testing.T) {
 		createMedusaSecretAndInstallDeps(t, namespace, medusaBackend)
 		deployFullStackCluster(t, namespace, true)
 
+		t.Run("Test Stargate", func(t *testing.T) {
+			testStargate(t, namespace)
+		})
+
 		t.Run("Test Reaper", func(t *testing.T) {
 			testReaper(t, namespace)
 		})
@@ -104,16 +108,6 @@ func TestFullStackScenario(t *testing.T) {
 
 		t.Run("Test Grafana", func(t *testing.T) {
 			testGrafana(t, namespace)
-		})
-
-		t.Run("Test Stargate", func(t *testing.T) {
-			// The backup/restore test runs before this. Because it shuts down
-			// the Cassandra cluster, we need to restart Stargate. See
-			// https://github.com/k8ssandra/k8ssandra/issues/411 for details.
-			releaseName := "k8ssandra"
-			dcName := "dc1"
-			RestartStargate(t, releaseName, dcName, namespace)
-			testStargate(t, namespace)
 		})
 	})
 
