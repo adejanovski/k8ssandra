@@ -96,6 +96,12 @@ func TestFullStackScenario(t *testing.T) {
 
 		t.Run("Test Medusa", func(t *testing.T) {
 			testMedusa(t, namespace, medusaBackend, backupName, true)
+			// The backup/restore test shuts down
+			// the Cassandra cluster, we need to restart Stargate. See
+			// https://github.com/k8ssandra/k8ssandra/issues/411 for details.
+			releaseName := "k8ssandra"
+			dcName := "dc1"
+			RestartStargate(t, releaseName, dcName, namespace)
 		})
 
 		t.Run("Test Prometheus", func(t *testing.T) {
@@ -107,12 +113,6 @@ func TestFullStackScenario(t *testing.T) {
 		})
 
 		t.Run("Test Stargate", func(t *testing.T) {
-			// The backup/restore test runs before this. Because it shuts down
-			// the Cassandra cluster, we need to restart Stargate. See
-			// https://github.com/k8ssandra/k8ssandra/issues/411 for details.
-			releaseName := "k8ssandra"
-			dcName := "dc1"
-			RestartStargate(t, releaseName, dcName, namespace)
 			testStargate(t, namespace)
 		})
 	})
