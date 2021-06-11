@@ -18,6 +18,8 @@ stargate:
 
     cassandra:
       enabled: true
+  livenessInitialDelaySeconds: 60
+  readinessInitialDelaySeconds: 60
 
 medusa:
   enabled: true

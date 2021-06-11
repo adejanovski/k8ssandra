@@ -110,16 +110,16 @@ spec:
             httpGet:
               path: /checker/liveness
               port: health
-            timeoutSeconds: 10
+            timeoutSeconds: 20
             initialDelaySeconds: {{ .Values.stargate.livenessInitialDelaySeconds }}
-            failureThreshold: 5
+            failureThreshold: 20
           readinessProbe:
             httpGet:
               path: /checker/readiness
               port: health
-            timeoutSeconds: 10
+            timeoutSeconds: 20
             initialDelaySeconds: {{ .Values.stargate.readinessInitialDelaySeconds }}
-            failureThreshold: 5
+            failureThreshold: 20
       {{- if .Values.stargate.tolerations }}
       tolerations: {{ toYaml .Values.stargate.tolerations | nindent 6 }}
       {{- end }}
