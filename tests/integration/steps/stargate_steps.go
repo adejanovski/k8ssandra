@@ -51,7 +51,7 @@ func stargatePodIsReady(t *testing.T, namespace string) bool {
 func WaitForAuthEndpoint(t *testing.T) {
 	g(t).Eventually(func() bool {
 		return authEndpointIsReachable(t)
-	}, 2*time.Minute, retryInterval).Should(BeTrue())
+	}, 5*time.Minute, retryInterval).Should(BeTrue())
 }
 
 func authEndpointIsReachable(t *testing.T) bool {
