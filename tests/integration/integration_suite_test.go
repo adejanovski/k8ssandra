@@ -94,6 +94,14 @@ func TestFullStackScenario(t *testing.T) {
 			testReaper(t, namespace)
 		})
 
+		t.Run("Test Prometheus", func(t *testing.T) {
+			testPrometheus(t, namespace)
+		})
+
+		t.Run("Test Grafana", func(t *testing.T) {
+			testGrafana(t, namespace)
+		})
+
 		t.Run("Test Medusa", func(t *testing.T) {
 			testMedusa(t, namespace, medusaBackend, backupName, true)
 			// The backup/restore test shuts down
@@ -102,14 +110,6 @@ func TestFullStackScenario(t *testing.T) {
 			releaseName := "k8ssandra"
 			dcName := "dc1"
 			RestartStargate(t, releaseName, dcName, namespace)
-		})
-
-		t.Run("Test Prometheus", func(t *testing.T) {
-			testPrometheus(t, namespace)
-		})
-
-		t.Run("Test Grafana", func(t *testing.T) {
-			testGrafana(t, namespace)
 		})
 
 		t.Run("Test Stargate", func(t *testing.T) {
