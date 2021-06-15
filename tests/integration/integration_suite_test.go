@@ -94,6 +94,10 @@ func TestFullStackScenario(t *testing.T) {
 			testReaper(t, namespace)
 		})
 
+		t.Run("Test Medusa", func(t *testing.T) {
+			testMedusa(t, namespace, medusaBackend, backupName, true)
+		})
+
 		t.Run("Test Prometheus", func(t *testing.T) {
 			testPrometheus(t, namespace)
 		})
@@ -102,17 +106,13 @@ func TestFullStackScenario(t *testing.T) {
 			testGrafana(t, namespace)
 		})
 
-		t.Run("Test Medusa", func(t *testing.T) {
-			testMedusa(t, namespace, medusaBackend, backupName, true)
+		t.Run("Test Stargate", func(t *testing.T) {
 			// The backup/restore test shuts down
 			// the Cassandra cluster, we need to restart Stargate. See
 			// https://github.com/k8ssandra/k8ssandra/issues/411 for details.
 			releaseName := "k8ssandra"
 			dcName := "dc1"
 			RestartStargate(t, releaseName, dcName, namespace)
-		})
-
-		t.Run("Test Stargate", func(t *testing.T) {
 			testStargate(t, namespace)
 		})
 	})
@@ -303,8 +303,7 @@ func testPrometheus(t *testing.T, namespace string) {
 	log.Println(Step("Testing Prometheus..."))
 	PodWithLabelsIsReady(t, namespace, map[string]string{"app": "prometheus"})
 	CheckPrometheusMetricExtraction(t)
-	expectedActiveTargets := CountMonitoredItems(t, namespace)
-	CheckPrometheusActiveTargets(t, expectedActiveTargets) // We're monitoring 3 Cassandra nodes and 1 Stargate instance
+	CheckPrometheusActiveTargets(t, namespace) // We're monitoring 3 Cassandra nodes and 1 Stargate instance
 }
 
 // Grafana tests

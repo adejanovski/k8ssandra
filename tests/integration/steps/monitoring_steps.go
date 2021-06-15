@@ -11,7 +11,14 @@ import (
 )
 
 // Monitoring related functions
-func CheckPrometheusActiveTargets(t *testing.T, expectedTargets int) {
+func CheckPrometheusActiveTargets(t *testing.T, namespace string) {
+	g(t).Eventually(func() bool {
+		return GetPrometheusActiveTargets(t) == countMonitoredItems(t, namespace)
+	}, retryTimeout, retryInterval).Should(BeTrue())
+}
+
+// Monitoring related functions
+func GetPrometheusActiveTargets(t *testing.T) int {
 	restClient := resty.New()
 	response, err := restClient.R().Get("http://127.0.0.1:8080/prometheus/api/v1/targets")
 	g(t).Expect(err).To(BeNil(), "Failed connecting to Prometheus")
@@ -19,7 +26,7 @@ func CheckPrometheusActiveTargets(t *testing.T, expectedTargets int) {
 	var genericJson map[string]interface{}
 	json.Unmarshal(prometheusResponse, &genericJson)
 	g(t).Expect(genericJson["status"].(string)).Should(Equal("success"))
-	g(t).Expect(len(genericJson["data"].(map[string]interface{})["activeTargets"].([]interface{}))).Should(Equal(expectedTargets))
+	return len(genericJson["data"].(map[string]interface{})["activeTargets"].([]interface{}))
 }
 
 func CheckPrometheusMetricExtraction(t *testing.T) {
@@ -46,7 +53,7 @@ func CheckGrafanaIsReachable(t *testing.T) {
 	log.Println(Info("Grafana could be reached through HTTP"))
 }
 
-func CountMonitoredItems(t *testing.T, namespace string) int {
+func countMonitoredItems(t *testing.T, namespace string) int {
 	return CountPodsWithLabels(t, namespace, map[string]string{"app.kubernetes.io/managed-by": "cass-operator"}) +
 		CountPodsWithLabels(t, namespace, map[string]string{"app": releaseName + "-" + datacenterName + "-stargate"})
 }
