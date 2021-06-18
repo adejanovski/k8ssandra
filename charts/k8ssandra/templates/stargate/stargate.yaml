@@ -44,6 +44,23 @@ spec:
                     sleep 5
                 done
                 echo "Cassandra is ready. Starting Stargate..."
+          {{- if and (.Values.reaper.enabled) }}
+          - name: wait-for-reaper
+            image: curlimages/curl:7.77.0
+            imagePullPolicy: IfNotPresent
+            command:
+              - sh
+            args:
+              - -c
+              - |
+                echo "Waiting for the Reaper pod in {{ include "k8ssandra.datacenterName" . }} to finish starting..."
+                curl http://{{ include "k8ssandra.clusterName" . }}-reaper-reaper-service.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain | default "cluster.local" }}:8080/cluster --fail
+                while [ $? -ne 0 ]; do
+                    sleep 5
+                    curl http://{{ include "k8ssandra.clusterName" . }}-reaper-reaper-service.{{ .Release.Namespace }}.svc.{{ .Values.clusterDomain | default "cluster.local" }}:8080/cluster --fail
+                done
+                echo "Reaper is ready. Starting Stargate..."
+          {{- end }}
       containers:
         - name: {{ .Release.Name }}-{{ include "k8ssandra.datacenterName" . }}-stargate
           image: {{ $image }}
