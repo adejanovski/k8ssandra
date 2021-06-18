@@ -248,6 +248,30 @@ spec:
           - name: podinfo
             mountPath: /etc/podinfo
         {{- end }}
+        {{- if .Values.cassandra.livenessProbe }}
+        livenessProbe:
+          httpGet:
+            path: /api/v0/probes/liveness
+            port: 8080
+            scheme: HTTP
+          failureThreshold: {{ .Values.cassandra.livenessProbe.failureThreshold | default 3 }}
+          initialDelaySeconds: {{ .Values.cassandra.livenessProbe.initialDelaySeconds | default 15 }}
+          periodSeconds: {{ .Values.cassandra.livenessProbe.periodSeconds | default 15 }}
+          successThreshold: {{ .Values.cassandra.livenessProbe.successThreshold | default 1 }}
+          timeoutSeconds: {{ .Values.cassandra.livenessProbe.timeoutSeconds | default 1 }}
+        {{- end }}
+        {{- if .Values.cassandra.readinessProbe }}
+        readinessProbe:
+          httpGet:
+            path: /api/v0/probes/readiness
+            port: 8080
+            scheme: HTTP
+          failureThreshold: {{ .Values.cassandra.readinessProbe.failureThreshold | default 3 }}
+          initialDelaySeconds: {{ .Values.cassandra.readinessProbe.initialDelaySeconds | default 20 }}
+          periodSeconds: {{ .Values.cassandra.readinessProbe.periodSeconds | default 10 }}
+          successThreshold: {{ .Values.cassandra.readinessProbe.successThreshold | default 1 }}
+          timeoutSeconds: {{ .Values.cassandra.readinessProbe.timeoutSeconds | default 1 }}
+        {{- end }}
       {{- if .Values.medusa.enabled }}
       - name: medusa
         image: {{ $medusaImage }}

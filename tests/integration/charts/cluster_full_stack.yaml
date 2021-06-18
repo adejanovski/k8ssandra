@@ -7,6 +7,10 @@ cassandra:
     size: 2
   ingress:
     enabled: false
+  livenessProbe:
+    failureThreshold: 20
+  readinessProbe:
+    failureThreshold: 20
 
 stargate:
   enabled: true
