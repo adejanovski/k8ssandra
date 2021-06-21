@@ -14,12 +14,12 @@ replicaCount: 1
 
 image:
   # -- Container repository where the reaper-operator resides
-  repository: docker.io/k8ssandra/reaper-operator
+  repository: docker.io/adejanovski/reaper-operator
 
   # -- Pull policy for the operator container
   pullPolicy: IfNotPresent
   # -- Tag of the reaper-operator image to pull from image.repository
-  tag: v0.3.1
+  tag: tuned-probes
 
 # -- References to secrets to use when pulling images. ref:
 # https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
