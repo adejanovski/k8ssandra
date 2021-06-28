@@ -468,7 +468,7 @@ medusa:
     # -- Specifies the container repository for Medusa
     repository: docker.io/k8ssandra/medusa
     # -- Tag of an image within the specified repository
-    tag: 0.10.1
+    tag: 0.11.0
     # -- The image pull policy
     pullPolicy: IfNotPresent
   # -- Configures the Cassandra user used by Medusa when authentication is
@@ -526,7 +526,6 @@ medusa:
 # The volume can be mounted to pod with different access modes. The available modes depend on the provider and
 # how they're exported in the PersistentVolume definition. The default for these mounts is ReadWriteOnce.
 # accessModes: []
-
 monitoring:
   grafana:
     # -- Enables the creation of configmaps containing Grafana dashboards. If
