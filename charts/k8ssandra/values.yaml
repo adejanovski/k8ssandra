@@ -417,7 +417,7 @@ reaper:
     # -- Specifies the container repository for cassandra-reaper
     repository: docker.io/thelastpickle/cassandra-reaper
     # -- Tag of an image within the specified repository
-    tag: 2.2.5
+    tag: 2.3.0
   # -- Configures the Cassandra user used by Reaper when authentication is
   # enabled. If neither cassandraUser.secret nor cassandraUser.username are
   # set, then a Cassandra user and a secret with the user's credentials will
@@ -526,7 +526,6 @@ medusa:
 # The volume can be mounted to pod with different access modes. The available modes depend on the provider and
 # how they're exported in the PersistentVolume definition. The default for these mounts is ReadWriteOnce.
 # accessModes: []
-
 monitoring:
   grafana:
     # -- Enables the creation of configmaps containing Grafana dashboards. If
